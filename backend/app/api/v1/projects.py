@@ -678,7 +678,12 @@ async def upload_evidence(
     # Subir archivo a storage
     try:
         file_content = await file.read()
-        storage_key = f"projects/{task.project_id}/tasks/{task_id}/{file.filename}"
+        
+        # Sanitizar nombre de archivo (reemplazar espacios y caracteres especiales)
+        import re
+        from urllib.parse import quote
+        safe_filename = re.sub(r'[^\w\.-]', '_', file.filename)
+        storage_key = f"projects/{task.project_id}/tasks/{task_id}/{safe_filename}"
         
         minio_client.upload_file(
             bucket_name="evidencias",
