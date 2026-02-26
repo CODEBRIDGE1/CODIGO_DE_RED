@@ -66,7 +66,17 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Middleware
 # ============================================
 
-# CORS
+# Audit Middleware (se ejecuta último)
+app.add_middleware(AuditMiddleware)
+
+# Trusted Host (seguridad adicional en producción)
+if settings.is_production:
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=["*.codigo-red.com", "codigo-red.com", "31.97.210.250", "31.97.210.250:8001", "localhost", "127.0.0.1"]
+    )
+
+# CORS (debe ejecutarse primero, por eso se agrega último)
 cors_origins = settings.get_cors_origins()
 
 # En desarrollo, permitir todos los orígenes para facilitar pruebas
@@ -84,16 +94,6 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Total-Count", "X-Page", "X-Page-Size"]
 )
-
-# Trusted Host (seguridad adicional en producción)
-if settings.is_production:
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=["*.codigo-red.com", "codigo-red.com", "31.97.210.250", "31.97.210.250:8001", "localhost", "127.0.0.1"]
-    )
-
-# Audit Middleware
-app.add_middleware(AuditMiddleware)
 
 
 # ============================================
