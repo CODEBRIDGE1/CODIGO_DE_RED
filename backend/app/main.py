@@ -84,7 +84,10 @@ if settings.is_development:
     logger.info("🌐 CORS: Permitiendo TODOS los orígenes (development mode)")
     cors_origins = ["*"]
 else:
-    logger.info(f"🌐 CORS: Orígenes permitidos: {cors_origins}")
+    # En producción, registrar los orígenes pero también permitir todos temporalmente para debug
+    logger.info(f"🌐 CORS: Orígenes configurados: {cors_origins}")
+    logger.warning("⚠️  CORS: Permitiendo TODOS los orígenes temporalmente para debug")
+    cors_origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
