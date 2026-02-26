@@ -11,6 +11,9 @@ Asegúrate de tener:
 - Git configurado en el servidor
 - Docker y Docker Compose instalados
 
+**⚠️ NOTA**: Tu servidor usa Docker Compose V2 (plugin).  
+Usa `docker compose` (con espacio) en lugar de `docker compose` (con guión)
+
 ---
 
 ## 🔄 PASOS PARA ACTUALIZAR
@@ -32,7 +35,7 @@ cd /ruta/del/proyecto/CODIGO_DE_RED
 
 ```bash
 # Backup rápido de PostgreSQL
-docker-compose exec -T postgres pg_dump -U codigo_red_user codigo_red_db > backup_$(date +%Y%m%d_%H%M%S).sql
+docker compose exec -T postgres pg_dump -U codigo_red_user codigo_red_db > backup_$(date +%Y%m%d_%H%M%S).sql
 
 # Verificar que se creó el backup
 ls -lh backup_*.sql
@@ -101,32 +104,32 @@ API_RELOAD=false
 
 ```bash
 # Ver contenedores corriendo
-docker-compose ps
+docker compose ps
 
 # Detener todo (mantiene volúmenes/datos)
-docker-compose down
+docker compose down
 ```
 
-**⚠️ NO usar `docker-compose down -v` porque borra la base de datos**
+**⚠️ NO usar `docker compose down -v` porque borra la base de datos**
 
 ### 7️⃣ Rebuildar imágenes con nuevos cambios
 
 ```bash
 # Rebuildar todas las imágenes
-docker-compose build --no-cache
+docker compose build --no-cache
 
 # O rebuildar solo las que cambiaron
-docker-compose build api frontend
+docker compose build api frontend
 ```
 
 ### 8️⃣ Levantar servicios actualizados
 
 ```bash
 # Levantar en modo detached
-docker-compose up -d
+docker compose up -d
 
 # Ver logs en tiempo real
-docker-compose logs -f
+docker compose logs -f
 ```
 
 **Salida esperada**:
@@ -144,13 +147,13 @@ docker-compose logs -f
 
 ```bash
 # Ver estado de migraciones
-docker-compose exec api alembic current
+docker compose exec api alembic current
 
 # Aplicar migraciones pendientes
-docker-compose exec api alembic upgrade head
+docker compose exec api alembic upgrade head
 
 # Verificar que se aplicaron correctamente
-docker-compose exec api alembic current
+docker compose exec api alembic current
 ```
 
 **Salida esperada**:
@@ -163,11 +166,11 @@ INFO  [alembic.runtime.migration] Running upgrade 359d44c42b9d -> 240a1b9b943a, 
 
 ```bash
 # 1. Verificar estado de contenedores
-docker-compose ps
+docker compose ps
 # Todos deben estar "Up (healthy)" o "Up"
 
 # 2. Verificar logs del API (últimas 20 líneas)
-docker-compose logs api --tail=20
+docker compose logs api --tail=20
 
 # 3. Test de CORS
 ./backend/scripts/test_cors.sh 31.97.210.250 8001
@@ -194,10 +197,10 @@ Después de actualizar, valida que todo funciona:
 curl http://localhost:8001/health
 
 # Base de datos
-docker-compose exec postgres pg_isready
+docker compose exec postgres pg_isready
 
 # Redis
-docker-compose exec redis redis-cli ping
+docker compose exec redis redis-cli ping
 ```
 
 ### Desde tu navegador (máquina local):
@@ -223,10 +226,10 @@ docker-compose exec redis redis-cli ping
 
 ```bash
 # Ver logs del API
-docker-compose logs api --tail=50
+docker compose logs api --tail=50
 
 # Verificar que el API está escuchando
-docker-compose exec api netstat -tuln | grep 8000
+docker compose exec api netstat -tuln | grep 8000
 
 # Verificar firewall
 sudo ufw status
@@ -236,7 +239,7 @@ sudo ufw status
 
 ```bash
 # Verificar variables de entorno en el contenedor
-docker-compose exec api printenv | grep CORS
+docker compose exec api printenv | grep CORS
 
 # Debe mostrar:
 # CORS_ORIGINS=http://31.97.210.250:5173,http://localhost:5173
@@ -244,47 +247,47 @@ docker-compose exec api printenv | grep CORS
 
 # Si no, editar .env y reiniciar
 nano .env
-docker-compose restart api
+docker compose restart api
 ```
 
 ### Problema: "Migration failed"
 
 ```bash
 # Ver migraciones aplicadas
-docker-compose exec api alembic history
+docker compose exec api alembic history
 
 # Ver estado actual
-docker-compose exec api alembic current
+docker compose exec api alembic current
 
 # Si hay error, ver detalles
-docker-compose logs api | grep -i error
+docker compose logs api | grep -i error
 
 # Rollback de emergencia (solo si es necesario)
-docker-compose exec api alembic downgrade -1
+docker compose exec api alembic downgrade -1
 ```
 
 ### Problema: "Frontend shows blank page"
 
 ```bash
 # Verificar que VITE_API_BASE_URL es correcto
-docker-compose exec frontend printenv | grep VITE
+docker compose exec frontend printenv | grep VITE
 
 # Debe mostrar:
 # VITE_API_BASE_URL=http://31.97.210.250:8001
 
 # Si no, editar .env y rebuild
 nano .env
-docker-compose up -d --build frontend
+docker compose up -d --build frontend
 ```
 
 ### Problema: "Database connection error"
 
 ```bash
 # Verificar PostgreSQL
-docker-compose exec postgres psql -U codigo_red_user -d codigo_red_db -c "SELECT 1"
+docker compose exec postgres psql -U codigo_red_user -d codigo_red_db -c "SELECT 1"
 
 # Ver logs de PostgreSQL
-docker-compose logs postgres --tail=30
+docker compose logs postgres --tail=30
 
 # Verificar password en .env coincide con el del contenedor
 ```
@@ -297,18 +300,18 @@ Si necesitas volver a la versión anterior:
 
 ```bash
 # 1. Detener contenedores
-docker-compose down
+docker compose down
 
 # 2. Volver al commit anterior
 git log --oneline -5  # Ver últimos commits
 git checkout 1e22568  # Reemplazar con el hash anterior
 
 # 3. Restaurar backup de base de datos
-docker-compose up -d postgres
-cat backup_YYYYMMDD_HHMMSS.sql | docker-compose exec -T postgres psql -U codigo_red_user -d codigo_red_db
+docker compose up -d postgres
+cat backup_YYYYMMDD_HHMMSS.sql | docker compose exec -T postgres psql -U codigo_red_user -d codigo_red_db
 
 # 4. Levantar todo
-docker-compose up -d
+docker compose up -d
 ```
 
 ---
@@ -327,17 +330,17 @@ Lista de verificación después de actualizar:
 - [ ] Se pueden subir evidencias
 - [ ] Se pueden eliminar evidencias
 - [ ] CORS funciona desde el navegador
-- [ ] No hay errores en logs: `docker-compose logs --tail=50`
+- [ ] No hay errores en logs: `docker compose logs --tail=50`
 
 ---
 
 ## 📝 NOTAS IMPORTANTES
 
 1. **Siempre hacer backup antes de actualizar**
-2. **No usar `-v` en `docker-compose down` (borra datos)**
+2. **No usar `-v` en `docker compose down` (borra datos)**
 3. **Cambiar passwords en producción** (no usar los del ejemplo)
 4. **Verificar firewall** permite puertos 8001, 5173, 9000
-5. **Monitorear logs** después de actualizar: `docker-compose logs -f`
+5. **Monitorear logs** después de actualizar: `docker compose logs -f`
 
 ---
 
@@ -346,8 +349,8 @@ Lista de verificación después de actualizar:
 Si algo no funciona después de seguir estas instrucciones:
 
 1. **No apagues el servidor**
-2. **Captura los logs**: `docker-compose logs > error_logs.txt`
-3. **Captura el estado**: `docker-compose ps > status.txt`
+2. **Captura los logs**: `docker compose logs > error_logs.txt`
+3. **Captura el estado**: `docker compose ps > status.txt`
 4. **Revisa**: [DEPLOYMENT.md](DEPLOYMENT.md) para troubleshooting detallado
 
 ---
