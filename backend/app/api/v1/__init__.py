@@ -22,5 +22,5 @@ api_router.include_router(documents.router, prefix="/companies", tags=["Document
 # Compliance endpoints (Matriz de Obligaciones)
 api_router.include_router(compliance.router, prefix="/compliance", tags=["Compliance"])
 
-# Projects endpoints (Proyectos)
+# Projects endpoints
 api_router.include_router(projects.router, prefix="/projects", tags=["Projects"])

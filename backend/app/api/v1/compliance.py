@@ -3,7 +3,7 @@ API endpoints for Compliance Matrix (Matriz de Obligaciones)
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, cast, String
 from typing import List
 import json
 
@@ -240,9 +240,12 @@ async def get_company_compliance_matrix(
     requirements = result.scalars().all()
     
     # Obtener todas las reglas para este tipo
+    # Comparar usando cast para evitar problemas de tipo enum
+    tipo_carga_str = classification.tipo_centro_carga.value if hasattr(classification.tipo_centro_carga, 'value') else str(classification.tipo_centro_carga)
+    
     result = await db.execute(
         select(ComplianceRule).where(
-            ComplianceRule.tipo_centro_carga == classification.tipo_centro_carga
+            cast(ComplianceRule.tipo_centro_carga, String) == tipo_carga_str
         )
     )
     rules = result.scalars().all()
@@ -281,8 +284,7 @@ async def get_company_compliance_matrix(
     return ComplianceMatrixResponse(
         company_id=company.id,
         razon_social=company.razon_social,
-        tipo_centro_carga=TipoCentroCargaEnum(classification.tipo_centro_carga.value),
-        justificacion=classification.justificacion,
+        tipo_centro_carga=classification.tipo_centro_carga,
         requerimientos=requerimientos
     )
 

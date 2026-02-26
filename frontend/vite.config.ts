@@ -3,8 +3,8 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const apiUrl = env.VITE_API_BASE_URL || 'http://localhost:8001';
-  
+  const apiTarget = process.env.VITE_API_BASE_URL || env.VITE_API_BASE_URL || 'http://localhost:8001';
+
   return {
     plugins: [svelte()],
     server: {
@@ -17,15 +17,12 @@ export default defineConfig(({ mode }) => {
       },
       proxy: {
         '/api': {
-          target: apiUrl,
+          target: apiTarget,
           changeOrigin: true,
-          secure: false,
-          rewrite: undefined
+          autoRewrite: true,
+          protocolRewrite: 'http'
         }
       }
-    },
-    define: {
-      '__API_URL__': JSON.stringify(apiUrl)
     },
     logLevel: 'warn'
   };

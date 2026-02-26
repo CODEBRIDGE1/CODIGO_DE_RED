@@ -49,12 +49,31 @@ class Settings(BaseSettings):
     
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
+    FRONTEND_URL: str = "http://localhost:5173"  # URL principal del frontend
     
     def get_cors_origins(self) -> List[str]:
-        """Get CORS origins as list"""
+        """Get CORS origins as list, including FRONTEND_URL"""
+        origins = []
+        
+        # Agregar CORS_ORIGINS
         if isinstance(self.CORS_ORIGINS, str):
-            return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
-        return self.CORS_ORIGINS
+            origins.extend([origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()])
+        else:
+            origins.extend(self.CORS_ORIGINS)
+        
+        # Agregar FRONTEND_URL si no está ya incluido
+        if self.FRONTEND_URL and self.FRONTEND_URL not in origins:
+            origins.append(self.FRONTEND_URL)
+        
+        # Eliminar duplicados preservando orden
+        seen = set()
+        unique_origins = []
+        for origin in origins:
+            if origin not in seen:
+                seen.add(origin)
+                unique_origins.append(origin)
+        
+        return unique_origins
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 100

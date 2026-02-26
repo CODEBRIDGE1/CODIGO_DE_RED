@@ -1,7 +1,17 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { fly } from 'svelte/transition';
-import type { Company } from '$lib/types';
+
+interface Company {
+  id: number;
+  razon_social: string;
+  nombre_comercial?: string;
+  rfc: string;
+  telefono?: string;
+  email?: string;
+  is_active: boolean;
+  created_at: string;
+}
 
 let companies = $state<Company[]>([]);
 let selectedCompany = $state<Company | null>(null);
@@ -33,6 +43,8 @@ let justificacion = $state('');
 // Matrix data
 let matrixData = $state<any>(null);
 
+
+
 interface CompanyWithClassification extends Company {
   classification?: {
     tipo_centro_carga: string;
@@ -56,8 +68,6 @@ async function loadCompanies() {
     });
     
     const response = await fetch(`/api/v1/companies/?${params}`, {
-      method: 'GET',
-      cache: 'no-store',
       headers: { 
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -65,11 +75,18 @@ async function loadCompanies() {
     });
     
     if (!response.ok) {
-      throw new Error(`Error al cargar empresas: ${response.status}`);
+      const errorData = await response.json().catch(() => ({ detail: 'Error al cargar empresas' }));
+      throw new Error(errorData.detail || 'Error al cargar empresas');
     }
     
     const data = await response.json();
+    console.log('[Obligaciones] API Response:', data);
+    console.log('[Obligaciones] Companies array:', data.companies);
+    console.log('[Obligaciones] Array length:', data.companies?.length);
+    
     companies = data.companies || [];
+    console.log('[Obligaciones] State after assignment:', companies);
+    console.log('[Obligaciones] State length:', companies.length);
     
     // Cargar clasificaciones en paralelo
     const classificationPromises = companies.map(async (company) => {
@@ -122,6 +139,16 @@ async function saveClassification() {
     const companyWithClass = selectedCompany as CompanyWithClassification;
     const method = companyWithClass.classification ? 'PUT' : 'POST';
     
+    const payload = {
+      tipo_centro_carga: tipoSelected,
+      justificacion: justificacion || null
+    };
+    console.log('[Obligaciones] Saving classification:', {
+      method,
+      company_id: selectedCompany.id,
+      payload
+    });
+    
     const response = await fetch(
       `/api/v1/compliance/companies/${selectedCompany.id}/classification`,
       {
@@ -130,15 +157,15 @@ async function saveClassification() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          tipo_centro_carga: tipoSelected,
-          justificacion: justificacion || null
-        })
+        body: JSON.stringify(payload)
       }
     );
     
+    console.log('[Obligaciones] Save response status:', response.status);
+    
     if (!response.ok) {
       const err = await response.json();
+      console.error('[Obligaciones] Save error:', err);
       throw new Error(err.detail || 'Error al guardar');
     }
     
@@ -417,9 +444,9 @@ onMount(() => {
 
 <!-- Matrix Modal -->
 {#if showMatrixModal && matrixData}
-  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9998] p-4">
-    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-      <div class="p-6">
+  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9998] p-2 md:p-4">
+    <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[95vh] md:max-h-[90vh] overflow-y-auto">
+      <div class="p-4 md:p-6">
         <div class="flex justify-between items-start mb-4">
           <div>
             <h2 class="text-xl font-bold">Matriz de Cumplimiento</h2>
@@ -454,49 +481,49 @@ onMount(() => {
         <div class="space-y-3">
           {#each matrixData.requerimientos as req}
             <div class="border border-gray-200 rounded-lg overflow-hidden">
-              <div class="flex items-center justify-between p-4 bg-gray-50">
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between p-3 md:p-4 bg-gray-50">
                 <div class="flex-1">
-                  <div class="flex items-center space-x-3">
-                    <span class="px-2 py-1 bg-gray-200 text-gray-700 text-xs font-mono rounded">
+                  <div class="flex flex-col md:flex-row md:items-center md:space-x-3 space-y-2 md:space-y-0">
+                    <span class="px-2 py-1 bg-gray-200 text-gray-700 text-xs font-mono rounded w-fit">
                       {req.codigo}
                     </span>
-                    <span class="font-medium text-gray-900">{req.nombre}</span>
+                    <span class="font-medium text-gray-900 text-sm md:text-base">{req.nombre}</span>
                   </div>
                   {#if req.descripcion}
-                    <p class="text-sm text-gray-600 mt-1 ml-14">{req.descripcion}</p>
+                    <p class="text-xs md:text-sm text-gray-600 mt-2">{req.descripcion}</p>
                   {/if}
                 </div>
-                <div class="ml-4">
+                <div class="mt-3 md:mt-0 md:ml-4 flex flex-col items-start md:items-end">
                   <span class="px-3 py-1 text-xs font-medium rounded-full {getEstadoColor(req.estado_aplicabilidad)}">
                     {getEstadoText(req.estado_aplicabilidad)}
                   </span>
                   {#if req.notas}
-                    <div class="text-xs text-gray-500 mt-1 text-right">{req.notas}</div>
+                    <div class="text-xs text-gray-500 mt-1">{req.notas}</div>
                   {/if}
                 </div>
               </div>
 
               {#if req.children && req.children.length > 0}
-                <div class="pl-8 py-2 bg-white border-t border-gray-200">
+                <div class="pl-4 md:pl-8 py-2 bg-white border-t border-gray-200">
                   {#each req.children as child}
-                    <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between py-3 border-b border-gray-100 last:border-0">
                       <div class="flex-1">
-                        <div class="flex items-center space-x-3">
-                          <span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-mono rounded">
+                        <div class="flex flex-col md:flex-row md:items-center md:space-x-3 space-y-2 md:space-y-0">
+                          <span class="px-2 py-1 bg-gray-100 text-gray-600 text-xs font-mono rounded w-fit">
                             {child.codigo}
                           </span>
-                          <span class="text-sm text-gray-700">{child.nombre}</span>
+                          <span class="text-xs md:text-sm text-gray-700">{child.nombre}</span>
                         </div>
                         {#if child.descripcion}
-                          <p class="text-xs text-gray-500 mt-1 ml-14">{child.descripcion}</p>
+                          <p class="text-xs text-gray-500 mt-2">{child.descripcion}</p>
                         {/if}
                       </div>
-                      <div class="ml-4">
+                      <div class="mt-2 md:mt-0 md:ml-4 flex flex-col items-start md:items-end">
                         <span class="px-3 py-1 text-xs font-medium rounded-full {getEstadoColor(child.estado_aplicabilidad)}">
                           {getEstadoText(child.estado_aplicabilidad)}
                         </span>
                         {#if child.notas}
-                          <div class="text-xs text-gray-500 mt-1 text-right">{child.notas}</div>
+                          <div class="text-xs text-gray-500 mt-1">{child.notas}</div>
                         {/if}
                       </div>
                     </div>

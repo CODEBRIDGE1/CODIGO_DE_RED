@@ -11,6 +11,13 @@ from app.models.project import ProjectStatus, TaskStatus, TaskType
 # PROJECT SCHEMAS
 # ==================
 
+class CustomTaskInput(BaseModel):
+    """Schema para tarea custom al crear proyecto"""
+    code: Optional[str] = Field(None, max_length=50)
+    title: str = Field(..., min_length=1, max_length=300)
+    description: Optional[str] = None
+
+
 class ProjectCreate(BaseModel):
     """Schema para crear proyecto"""
     company_id: int
@@ -20,6 +27,9 @@ class ProjectCreate(BaseModel):
     priority: Optional[str] = None
     start_date: Optional[date] = None
     due_date: Optional[date] = None
+    include_all_obligations: bool = False
+    selected_requirement_ids: Optional[List[int]] = None
+    custom_tasks: Optional[List[CustomTaskInput]] = None
 
 
 class ProjectUpdate(BaseModel):

@@ -38,9 +38,6 @@
     is_active: true
   });
 
-  // Usar el hostname actual del navegador
-  const hostname = window.location.hostname;
-  const apiUrl = `http://${hostname}:8001`;
   const accessToken = $derived($authStore.accessToken);
 
   // Cargar usuarios cuando el token esté disponible
@@ -72,7 +69,7 @@
       if (searchTerm) params.append('search', searchTerm);
       if (filterActive !== null) params.append('is_active', filterActive.toString());
 
-      const response = await fetch(`${apiUrl}/api/v1/users?${params}`, {
+      const response = await fetch(`/api/v1/users/?${params}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
@@ -126,8 +123,8 @@
 
     try {
       const url = modalMode === 'create' 
-        ? `${apiUrl}/api/v1/users`
-        : `${apiUrl}/api/v1/users/${selectedUser?.id}`;
+        ? `/api/v1/users`
+        : `/api/v1/users/${selectedUser?.id}`;
       
       const method = modalMode === 'create' ? 'POST' : 'PUT';
       
@@ -180,7 +177,7 @@
     }
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/users/${user.id}`, {
+      const response = await fetch(`/api/v1/users/${user.id}/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

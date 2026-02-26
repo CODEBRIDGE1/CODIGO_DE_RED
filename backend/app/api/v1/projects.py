@@ -728,7 +728,27 @@ async def upload_evidence(
     await db.commit()
     await db.refresh(db_evidence)
     
-    return db_evidence
+    # Obtener nombre del uploader
+    uploader_result = await db.execute(
+        select(User.full_name).where(User.id == current_user.id)
+    )
+    uploader_name = uploader_result.scalar_one_or_none()
+    
+    # Construir response con uploader_name
+    return EvidenceResponse(
+        id=db_evidence.id,
+        task_id=db_evidence.task_id,
+        storage_key=db_evidence.storage_key,
+        file_url=db_evidence.file_url,
+        filename=db_evidence.filename,
+        mime_type=db_evidence.mime_type,
+        size_bytes=db_evidence.size_bytes,
+        evidence_type=db_evidence.evidence_type,
+        comment=db_evidence.comment,
+        uploaded_by=db_evidence.uploaded_by,
+        uploader_name=uploader_name,
+        uploaded_at=db_evidence.uploaded_at
+    )
 
 
 @router.get("/tasks/{task_id}/evidences", response_model=List[EvidenceResponse])

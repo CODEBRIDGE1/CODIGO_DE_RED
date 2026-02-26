@@ -21,24 +21,25 @@ class EstadoAplicabilidadEnum(str, Enum):
 
 
 # Company Classification Schemas
-class CompanyClassificationBase(BaseModel):
+class CompanyClassificationCreate(BaseModel):
+    """Schema for creating company classification (company_id comes from URL path)"""
     tipo_centro_carga: TipoCentroCargaEnum
     justificacion: Optional[str] = None
 
 
-class CompanyClassificationCreate(CompanyClassificationBase):
-    company_id: int
-
-
 class CompanyClassificationUpdate(BaseModel):
+    """Schema for updating company classification"""
     tipo_centro_carga: Optional[TipoCentroCargaEnum] = None
     justificacion: Optional[str] = None
 
 
-class CompanyClassificationResponse(CompanyClassificationBase):
+class CompanyClassificationResponse(BaseModel):
+    """Schema for company classification response"""
     id: int
     company_id: int
     tenant_id: int
+    tipo_centro_carga: TipoCentroCargaEnum
+    justificacion: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     

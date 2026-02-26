@@ -100,10 +100,6 @@
     is_active: true
   });
 
-  // Usar el hostname actual del navegador
-  const hostname = window.location.hostname;
-  const apiUrl = `http://${hostname}:8001`;
-
   // Cargar empresas cuando el token esté disponible
   let hasLoadedOnce = false;
   $effect(() => {
@@ -133,7 +129,7 @@
       if (searchTerm) params.append('search', searchTerm);
       if (filterTipo) params.append('tipo_suministro', filterTipo);
 
-      const response = await fetch(`${apiUrl}/api/v1/companies?${params}`, {
+      const response = await fetch(`/api/v1/companies/?${params}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
@@ -199,7 +195,7 @@
 
   async function loadCompanyDetails(id: number) {
     try {
-      const response = await fetch(`${apiUrl}/api/v1/companies/${id}`, {
+      const response = await fetch(`/api/v1/companies/${id}/`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -221,8 +217,8 @@
 
     try {
       const url = modalMode === 'create' 
-        ? `${apiUrl}/api/v1/companies`
-        : `${apiUrl}/api/v1/companies/${selectedCompany?.id}`;
+        ? `/api/v1/companies`
+        : `/api/v1/companies/${selectedCompany?.id}`;
       
       const method = modalMode === 'create' ? 'POST' : 'PUT';
 
@@ -338,11 +334,9 @@
   async function loadDocuments(companyId: number) {
     loadingDocuments = true;
     const token = localStorage.getItem('access_token');
-    const hostname = window.location.hostname;
-    const apiUrl = `http://${hostname}:8001`;
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/companies/${companyId}/documents`, {
+      const response = await fetch(`/api/v1/companies/${companyId}/documents/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -375,8 +369,6 @@
     uploadingDocument = true;
     uploadProgress = 0;
     const token = localStorage.getItem('access_token');
-    const hostname = window.location.hostname;
-    const apiUrl = `http://${hostname}:8001`;
 
     const formData = new FormData();
     formData.append('file', file);
@@ -391,7 +383,7 @@
         }
       }, 200);
 
-      const response = await fetch(`${apiUrl}/api/v1/companies/${selectedCompanyForDocs.id}/upload`, {
+      const response = await fetch(`/api/v1/companies/${selectedCompanyForDocs.id}/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -430,11 +422,9 @@
     if (!selectedCompanyForDocs) return;
 
     const token = localStorage.getItem('access_token');
-    const hostname = window.location.hostname;
-    const apiUrl = `http://${hostname}:8001`;
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/companies/${selectedCompanyForDocs.id}/documents/${documentId}/download`, {
+      const response = await fetch(`/api/v1/companies/${selectedCompanyForDocs.id}/documents/${documentId}/download`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -456,11 +446,9 @@
     if (!selectedCompanyForDocs) return;
 
     const token = localStorage.getItem('access_token');
-    const hostname = window.location.hostname;
-    const apiUrl = `http://${hostname}:8001`;
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/companies/${selectedCompanyForDocs.id}/documents/${documentId}/download`, {
+      const response = await fetch(`/api/v1/companies/${selectedCompanyForDocs.id}/documents/${documentId}/download`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -479,11 +467,9 @@
     if (!selectedCompanyForDocs || !confirm('¿Está seguro de eliminar este documento?')) return;
 
     const token = localStorage.getItem('access_token');
-    const hostname = window.location.hostname;
-    const apiUrl = `http://${hostname}:8001`;
 
     try {
-      const response = await fetch(`${apiUrl}/api/v1/companies/${selectedCompanyForDocs.id}/documents/${documentId}`, {
+      const response = await fetch(`/api/v1/companies/${selectedCompanyForDocs.id}/documents/${documentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

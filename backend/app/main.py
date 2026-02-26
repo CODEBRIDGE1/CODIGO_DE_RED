@@ -68,12 +68,17 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS
 cors_origins = settings.get_cors_origins()
+
+# En desarrollo, permitir todos los orígenes para facilitar pruebas
 if settings.is_development:
-    cors_origins = ["*"]  # Permitir todos en desarrollo
+    logger.info("🌐 CORS: Permitiendo TODOS los orígenes (development mode)")
+    cors_origins = ["*"]
+else:
+    logger.info(f"🌐 CORS: Orígenes permitidos: {cors_origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.is_development else cors_origins,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -17,30 +17,47 @@ depends_on = None
 
 
 def upgrade():
-    # Create ENUM types
-    tipocentrocarga_enum = sa.Enum('TIPO_A', 'TIPO_B', 'TIPO_C', name='tipocentrocarga')
-    tipocentrocarga_enum.create(op.get_bind(), checkfirst=True)
+    # Create ENUM types FIRST (only once, idempotent)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE tipocentrocarga AS ENUM ('TIPO_A', 'TIPO_B', 'TIPO_C');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
+    """)
     
-    estadoaplicabilidad_enum = sa.Enum('APLICA', 'NO_APLICA', 'APLICA_RDC', 'APLICA_TIC', name='estadoaplicabilidad')
-    estadoaplicabilidad_enum.create(op.get_bind(), checkfirst=True)
+    op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE estadoaplicabilidad AS ENUM ('APLICA', 'NO_APLICA', 'APLICA_RDC', 'APLICA_TIC');
+        EXCEPTION
+            WHEN duplicate_object THEN null;
+        END $$;
+    """)
     
-    # Create company_classifications table
+    # Create company_classifications table (using String initially to avoid auto-create)
     op.create_table(
         'company_classifications',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('company_id', sa.Integer(), nullable=False),
         sa.Column('tenant_id', sa.Integer(), nullable=False),
-        sa.Column('tipo_centro_carga', sa.String(20), nullable=False),
+        sa.Column('tipo_centro_carga', sa.String(20), nullable=False),  # String initially
         sa.Column('justificacion', sa.Text(), nullable=True),
         sa.Column('created_by', sa.Integer(), nullable=False),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ),
+        sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
         sa.ForeignKeyConstraint(['created_by'], ['users.id'], ),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('company_id')
     )
+    
+    # Now convert to ENUM with explicit casting
+    op.execute("""
+        ALTER TABLE company_classifications 
+        ALTER COLUMN tipo_centro_carga TYPE tipocentrocarga 
+        USING tipo_centro_carga::tipocentrocarga
+    """)
     op.create_index('ix_company_classifications_company_id', 'company_classifications', ['company_id'])
     op.create_index('ix_company_classifications_tenant_id', 'company_classifications', ['tenant_id'])
 
@@ -67,14 +84,26 @@ def upgrade():
         'compliance_rules',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('requirement_id', sa.Integer(), nullable=False),
-        sa.Column('tipo_centro_carga', sa.String(20), nullable=False),
-        sa.Column('estado_aplicabilidad', sa.String(20), nullable=False),
+        sa.Column('tipo_centro_carga', sa.String(20), nullable=False),  # String initially
+        sa.Column('estado_aplicabilidad', sa.String(20), nullable=False),  # String initially
         sa.Column('notas', sa.Text(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['requirement_id'], ['compliance_requirements.id'], ),
+        sa.ForeignKeyConstraint(['requirement_id'], ['compliance_requirements.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
+    
+    # Now convert to ENUMs with explicit casting
+    op.execute("""
+        ALTER TABLE compliance_rules 
+        ALTER COLUMN tipo_centro_carga TYPE tipocentrocarga 
+        USING tipo_centro_carga::tipocentrocarga
+    """)
+    op.execute("""
+        ALTER TABLE compliance_rules 
+        ALTER COLUMN estado_aplicabilidad TYPE estadoaplicabilidad 
+        USING estado_aplicabilidad::estadoaplicabilidad
+    """)
     op.create_index('ix_compliance_rules_requirement_id', 'compliance_rules', ['requirement_id'])
     op.create_index('ix_compliance_rules_tipo', 'compliance_rules', ['tipo_centro_carga'])
 
@@ -88,8 +117,8 @@ def upgrade():
         sa.Column('old_value', sa.Text(), nullable=True),
         sa.Column('new_value', sa.Text(), nullable=True),
         sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
-        sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ),
+        sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
+        sa.ForeignKeyConstraint(['company_id'], ['companies.id'], ondelete='SET NULL'),
         sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], ),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
         sa.PrimaryKeyConstraint('id')
@@ -100,11 +129,23 @@ def upgrade():
 
 
 def downgrade():
+    # Drop tables first
+    op.drop_index('ix_compliance_audit_logs_created_at', table_name='compliance_audit_logs')
+    op.drop_index('ix_compliance_audit_logs_tenant_id', table_name='compliance_audit_logs')
+    op.drop_index('ix_compliance_audit_logs_company_id', table_name='compliance_audit_logs')
     op.drop_table('compliance_audit_logs')
+    
+    op.drop_index('ix_compliance_rules_tipo', table_name='compliance_rules')
+    op.drop_index('ix_compliance_rules_requirement_id', table_name='compliance_rules')
     op.drop_table('compliance_rules')
+    
+    op.drop_index('ix_compliance_requirements_codigo', table_name='compliance_requirements')
     op.drop_table('compliance_requirements')
+    
+    op.drop_index('ix_company_classifications_tenant_id', table_name='company_classifications')
+    op.drop_index('ix_company_classifications_company_id', table_name='company_classifications')
     op.drop_table('company_classifications')
     
-    # Drop ENUM types
-    sa.Enum(name='estadoaplicabilidad').drop(op.get_bind(), checkfirst=True)
-    sa.Enum(name='tipocentrocarga').drop(op.get_bind(), checkfirst=True)
+    # Drop ENUM types (idempotent)
+    op.execute("DROP TYPE IF EXISTS estadoaplicabilidad CASCADE")
+    op.execute("DROP TYPE IF EXISTS tipocentrocarga CASCADE")

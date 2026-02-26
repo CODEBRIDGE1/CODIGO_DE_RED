@@ -507,6 +507,37 @@
 		}
 	}
 
+	async function deleteEvidence(evidenceId: number) {
+		if (!confirm('¿Estás seguro de eliminar esta evidencia?')) return;
+
+		try {
+			const response = await fetch(`/api/v1/projects/evidences/${evidenceId}`, {
+				method: 'DELETE',
+				headers: {
+					Authorization: `Bearer ${getToken()}`
+				}
+			});
+
+			if (!response.ok) {
+				const errData = await response.json();
+				throw new Error(errData.detail || 'Error al eliminar evidencia');
+			}
+			
+			// Recargar evidencias de la tarea actual
+			if (selectedTask) {
+				await viewTaskEvidences(selectedTask);
+			}
+			
+			// Recargar detalle del proyecto si está abierto
+			if (selectedProject) {
+				await loadProjectDetail(selectedProject.id);
+			}
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Error desconocido';
+			alert(error);
+		}
+	}
+
 	function resetForm() {
 		formData = {
 			company_id: 0,
@@ -1307,6 +1338,13 @@
 											Descargar
 										</a>
 									{/if}
+									<button
+										onclick={() => deleteEvidence(evidence.id)}
+										class="text-xs px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50"
+										title="Eliminar evidencia"
+									>
+										Eliminar
+									</button>
 								</div>
 							</div>
 						</div>

@@ -9,15 +9,12 @@
   let loading = $state(false)
   let error = $state('')
 
-  const hostname = window.location.hostname;
-  const apiUrl = `http://${hostname}:8001`;
-
   async function handleLogin() {
     loading = true
     error = ''
     
     try {
-      const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
+      const response = await fetch(`/api/v1/auth/login/`, {
         method: 'POST',
         mode: 'cors',
         credentials: 'omit',

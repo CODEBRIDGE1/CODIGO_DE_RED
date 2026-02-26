@@ -1,6 +1,11 @@
 # PLATAFORMA CÓDIGO DE RED (CodeBridge SaaS)
 ### Jorge Ernesto Herrera Cazares
 
+> ✅ **MIGRATION HARDENING COMPLETADO** (26 Feb 2026)  
+> Todas las migraciones de Alembic han sido auditadas y corregidas para garantizar:  
+> Zero-downtime deployments | Rollback seguro | PostgreSQL 15 compatible | asyncpg compatible  
+> 📄 Ver reporte completo: [backend/docs/MIGRATION_HARDENING_REPORT.md](backend/docs/MIGRATION_HARDENING_REPORT.md)
+
 ## 🏗️ Arquitectura
 
 **Plataforma SaaS Multi-tenant** para gestión de cumplimiento del Código de Red con:
