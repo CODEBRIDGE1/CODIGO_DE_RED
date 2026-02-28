@@ -86,3 +86,18 @@ def require_tenant(
             detail="Usuario no pertenece a ninguna organización"
         )
     return current_user
+
+
+async def get_current_superadmin(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """
+    Verificar que el usuario actual es superadmin
+    Uso: para endpoints de administración global
+    """
+    if not current_user.is_superadmin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only superadmin users can access this resource"
+        )
+    return current_user
