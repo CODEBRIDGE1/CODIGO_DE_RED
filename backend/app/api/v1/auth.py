@@ -117,16 +117,30 @@ async def get_current_user_profile(
     Get current user profile
     Devuelve información del usuario autenticado
     """
-    # Obtener permisos del usuario (por ahora devolvemos array vacío)
+    # Obtener nombre del tenant si existe
+    tenant_name = None
+    if current_user.tenant_id:
+        result = await db.execute(
+            select(Tenant).where(Tenant.id == current_user.tenant_id)
+        )
+        tenant = result.scalar_one_or_none()
+        if tenant:
+            tenant_name = tenant.name
+    
+    # Obtener permisos del usuario (por ahora devolvemos dict vacío)
     # TODO: Implementar sistema de permisos granular
-    permissions = []
+    permissions = {}
+    roles = []
     
     return UserProfile(
-        id=str(current_user.id),
+        id=current_user.id,
         email=current_user.email,
         full_name=current_user.full_name,
-        tenant_id=current_user.tenant_id,
+        is_active=current_user.is_active,
         is_superadmin=current_user.is_superadmin,
+        tenant_id=current_user.tenant_id,
+        tenant_name=tenant_name,
+        roles=roles,
         permissions=permissions
     )
 
