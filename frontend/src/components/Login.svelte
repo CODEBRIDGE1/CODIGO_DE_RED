@@ -46,13 +46,27 @@
 
       const userProfile = await profileResponse.json();
 
+      // Convertir permissions de objeto a array plano
+      // Backend envía: { "module": ["action1", "action2"] }
+      // Frontend necesita: ["module.action1", "module.action2"]
+      let permissionsArray: string[] = [];
+      if (userProfile.permissions && typeof userProfile.permissions === 'object') {
+        Object.entries(userProfile.permissions).forEach(([module, actions]) => {
+          if (Array.isArray(actions)) {
+            actions.forEach((action: string) => {
+              permissionsArray.push(`${module}.${action}`);
+            });
+          }
+        });
+      }
+
       const user = {
         id: userProfile.id,
         email: userProfile.email,
         fullName: userProfile.full_name,
         tenantId: userProfile.tenant_id,
         isSuperadmin: userProfile.is_superadmin,
-        permissions: userProfile.permissions || []
+        permissions: permissionsArray
       };
 
       // Login en el store
