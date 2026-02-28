@@ -367,7 +367,7 @@
           </button>
         </div>
 
-        <form onsubmit|preventDefault={handleSubmit} class="space-y-4">
+        <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div class="col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
