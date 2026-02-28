@@ -43,6 +43,7 @@ class QuoteItem(Base):
     Creado y mantenido por superadmin
     """
     __tablename__ = "quote_items"
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, index=True)
     
@@ -82,6 +83,9 @@ class TenantQuoteItemPrice(Base):
     Si no existe, se usa el base_price de QuoteItem
     """
     __tablename__ = "tenant_quote_item_prices"
+    __table_args__ = (
+        {"sqlite_autoincrement": True, "extend_existing": True},
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     
@@ -102,8 +106,4 @@ class TenantQuoteItemPrice(Base):
     quote_item = relationship("QuoteItem", back_populates="tenant_prices")
     creator = relationship("User", foreign_keys=[created_by])
     updater = relationship("User", foreign_keys=[updated_by])
-    
-    # Constraint: un tenant solo puede tener un precio custom por item
-    __table_args__ = (
-        {"sqlite_autoincrement": True},
-    )
+
