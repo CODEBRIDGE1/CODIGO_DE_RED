@@ -19,10 +19,15 @@ class Quote(Base):
     
     tenant = relationship("Tenant", back_populates="quotes")
     company = relationship("Company", back_populates="quotes")
-    items = relationship("QuoteItem", back_populates="quote", cascade="all, delete-orphan")
+    lines = relationship("QuoteLine", back_populates="quote", cascade="all, delete-orphan")
 
-class QuoteItem(Base):
-    __tablename__ = "quote_items"
+class QuoteLine(Base):
+    """
+    Línea/partida de una cotización específica
+    NOTA: Esto es diferente de QuoteItem (catálogo global en quote_item.py)
+    """
+    __tablename__ = "quote_lines"
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True)
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
@@ -34,4 +39,4 @@ class QuoteItem(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    quote = relationship("Quote", back_populates="items")
+    quote = relationship("Quote", back_populates="lines")
