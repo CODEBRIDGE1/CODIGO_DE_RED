@@ -21,7 +21,8 @@ def import_models():
     """Import models for Alembic - call this explicitly when needed"""
     from app.models import (
         tenant, license, user, role, permission, module, audit_log,
-        company, obligation, project, evidence, quote, compliance, document
+        company, obligation, project, evidence, quote, compliance, document,
+        quote_item
     )
 
 
