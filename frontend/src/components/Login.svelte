@@ -33,24 +33,26 @@
         throw new Error(data.detail || 'Error al iniciar sesión')
       }
 
-      // Obtener información del usuario del token (decodificar JWT o hacer una llamada a /me)
-      // Por ahora simulamos el usuario basado en la respuesta
+      // Obtener perfil del usuario con el token
+      const profileResponse = await fetch('/api/v1/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${data.access_token}`
+        }
+      });
+
+      if (!profileResponse.ok) {
+        throw new Error('Error al obtener perfil del usuario');
+      }
+
+      const userProfile = await profileResponse.json();
+
       const user = {
-        id: '1',
-        email: email,
-        fullName: 'Usuario Demo',
-        tenantId: 1,
-        isSuperadmin: false,
-        permissions: [
-          'empresas.read', 'empresas.create', 'empresas.update',
-          'obligaciones.read', 'obligaciones.update',
-          'proyectos.read', 'proyectos.create', 'proyectos.update',
-          'evidencias.read', 'evidencias.create',
-          'cotizaciones.read', 'cotizaciones.create',
-          'reportes.read',
-          'usuarios.read',
-          'auditoria.read'
-        ]
+        id: userProfile.id,
+        email: userProfile.email,
+        fullName: userProfile.full_name,
+        tenantId: userProfile.tenant_id,
+        isSuperadmin: userProfile.is_superadmin,
+        permissions: userProfile.permissions || []
       };
 
       // Login en el store

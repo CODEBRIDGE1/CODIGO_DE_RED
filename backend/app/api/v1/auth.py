@@ -12,6 +12,7 @@ from app.core.security import verify_password, create_access_token, create_refre
 from app.core.config import settings
 from app.db.session import get_db
 from app.db.base import import_models
+from app.api.dependencies import get_current_user
 
 # Import all models to resolve relationships
 import_models()
@@ -109,17 +110,24 @@ async def refresh_token(
 
 @router.get("/me", response_model=UserProfile)
 async def get_current_user_profile(
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Get current user profile
     Devuelve información del usuario autenticado
     """
-    # TODO: Implementar obtención de usuario actual desde JWT
-    # Por ahora devuelve un error
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint pendiente de implementación"
+    # Obtener permisos del usuario (por ahora devolvemos array vacío)
+    # TODO: Implementar sistema de permisos granular
+    permissions = []
+    
+    return UserProfile(
+        id=str(current_user.id),
+        email=current_user.email,
+        full_name=current_user.full_name,
+        tenant_id=current_user.tenant_id,
+        is_superadmin=current_user.is_superadmin,
+        permissions=permissions
     )
 
 

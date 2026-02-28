@@ -10,6 +10,8 @@
   import Usuarios from './components/Usuarios.svelte';
   import Obligaciones from './components/Obligaciones.svelte';
   import Proyectos from './components/Proyectos.svelte';
+  import AdminClientes from './components/admin/AdminClientes.svelte';
+  import AdminConceptos from './components/admin/AdminConceptos.svelte';
   
   const isAuthenticated = $derived($authStore.isAuthenticated);
 
@@ -61,6 +63,25 @@
     {:else if $currentPath === '/auditoria'}
       <div class="p-6">
         <h1 class="text-2xl font-bold">Auditoría</h1>
+        <p class="text-gray-600 mt-2">Módulo en construcción...</p>
+      </div>
+    {:else if $currentPath === '/admin/clientes'}
+      <AdminClientes />
+    {:else if $currentPath === '/admin/conceptos'}
+      <AdminConceptos />
+    {:else if $currentPath === '/admin/matrices'}
+      <div class="p-6">
+        <h1 class="text-2xl font-bold">Matrices de Obligación</h1>
+        <p class="text-gray-600 mt-2">Módulo en construcción...</p>
+      </div>
+    {:else if $currentPath === '/admin/proyectos'}
+      <div class="p-6">
+        <h1 class="text-2xl font-bold">Todos los Proyectos</h1>
+        <p class="text-gray-600 mt-2">Módulo en construcción...</p>
+      </div>
+    {:else if $currentPath === '/admin/reportes'}
+      <div class="p-6">
+        <h1 class="text-2xl font-bold">Reportes Generales</h1>
         <p class="text-gray-600 mt-2">Módulo en construcción...</p>
       </div>
     {:else}
