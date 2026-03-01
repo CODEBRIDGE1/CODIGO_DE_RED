@@ -257,37 +257,25 @@ async def upload_profile_photo(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Subir foto de perfil del usuario autenticado"""
-    import os
+    """Subir foto de perfil del usuario autenticado — se guarda en MinIO"""
     from fastapi import UploadFile
+    from app.core.minio_client import minio_client
 
     ALLOWED = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-    EXT_MAP = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif"}
-
     content_type = file.content_type or ""
     if content_type not in ALLOWED:
         raise HTTPException(status_code=400, detail="Formato no permitido. Usa JPG, PNG o WEBP.")
 
-    ext = EXT_MAP.get(content_type, "jpg")
-    filename = f"{current_user.id}.{ext}"
-    upload_dir = "/app/uploads/avatars"
-    os.makedirs(upload_dir, exist_ok=True)
-
-    # Eliminar foto anterior de otros formatos
-    for old_ext in EXT_MAP.values():
-        old_path = os.path.join(upload_dir, f"{current_user.id}.{old_ext}")
-        if old_path != os.path.join(upload_dir, filename) and os.path.exists(old_path):
-            os.remove(old_path)
-
-    filepath = os.path.join(upload_dir, filename)
     contents = await file.read()
-    if len(contents) > 5 * 1024 * 1024:  # 5 MB
+    if len(contents) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="La imagen no puede superar 5 MB.")
 
-    with open(filepath, "wb") as f:
-        f.write(contents)
+    try:
+        photo_url = minio_client.upload_avatar(current_user.id, contents, content_type)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al subir la foto: {e}")
 
-    current_user.photo_url = f"/uploads/avatars/{filename}"
+    current_user.photo_url = photo_url
     await db.commit()
     await db.refresh(current_user)
     return await get_current_user_profile(current_user, db)

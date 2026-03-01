@@ -4,9 +4,21 @@ from minio.error import S3Error
 from app.core.config import settings
 from datetime import timedelta
 import io
+import json
 
 
-KNOWN_BUCKETS = ["documentos", "evidencias", "reportes"]
+KNOWN_BUCKETS = ["documentos", "evidencias", "reportes", "avatars"]
+
+# Política de lectura pública para el bucket avatars
+_PUBLIC_READ_POLICY = json.dumps({
+    "Version": "2012-10-17",
+    "Statement": [{
+        "Effect": "Allow",
+        "Principal": {"AWS": ["*"]},
+        "Action": ["s3:GetObject"],
+        "Resource": ["arn:aws:s3:::avatars/*"]
+    }]
+})
 
 
 class MinIOClient:
@@ -42,6 +54,28 @@ class MinIOClient:
                     print(f"✓ Bucket '{bucket}' creado")
             except S3Error as e:
                 print(f"Error al crear bucket '{bucket}': {e}")
+        
+        # Bucket avatars con lectura pública
+        try:
+            if not self.client.bucket_exists("avatars"):
+                self.client.make_bucket("avatars")
+                print("✓ Bucket 'avatars' creado")
+            # Aplicar política pública siempre (idempotente)
+            self.client.set_bucket_policy("avatars", _PUBLIC_READ_POLICY)
+        except S3Error as e:
+            print(f"Error al configurar bucket 'avatars': {e}")
+
+    def upload_avatar(self, user_id: int, data: bytes, content_type: str) -> str:
+        """Sube foto de perfil a MinIO y retorna la URL pública directa."""
+        ext_map = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif"}
+        ext = ext_map.get(content_type, "jpg")
+        object_name = f"avatar_{user_id}.{ext}"
+        data_stream = io.BytesIO(data)
+        self.client.put_object("avatars", object_name, data_stream, length=len(data), content_type=content_type)
+        # URL directa pública: http(s)://<external_endpoint>/avatars/<object>
+        scheme = "https" if settings.MINIO_SECURE else "http"
+        return f"{scheme}://{settings.MINIO_EXTERNAL_ENDPOINT}/avatars/{object_name}"
+
     
     def upload_file(self, bucket_name: str, object_name: str, data: bytes, content_type: str = "application/octet-stream"):
         """Subir un archivo a MinIO"""
