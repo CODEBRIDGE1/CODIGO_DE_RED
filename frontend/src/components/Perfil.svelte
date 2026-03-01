@@ -123,7 +123,48 @@
     editingName = false;
   }
 
-  // ── Módulo label ─────────────────────────────────────────
+  let changingPassword = $state(false);
+  let pwCurrent = $state('');
+  let pwNew = $state('');
+  let pwConfirm = $state('');
+  let pwSaving = $state(false);
+  let pwError = $state('');
+  let pwSuccess = $state(false);
+  let showPwCurrent = $state(false);
+  let showPwNew = $state(false);
+  let showPwConfirm = $state(false);
+
+  async function savePassword() {
+    pwError = '';
+    if (!pwCurrent) { pwError = 'Ingresa tu contraseña actual.'; return; }
+    if (pwNew.length < 8) { pwError = 'La nueva contraseña debe tener al menos 8 caracteres.'; return; }
+    if (pwNew !== pwConfirm) { pwError = 'Las contraseñas no coinciden.'; return; }
+    pwSaving = true;
+    try {
+      const res = await authStore.fetch(`${BASE}/api/v1/auth/me/password`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: pwCurrent, new_password: pwNew }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail ?? 'Error al cambiar la contraseña');
+      }
+      pwSuccess = true;
+      pwCurrent = pwNew = pwConfirm = '';
+      changingPassword = false;
+      setTimeout(() => { pwSuccess = false; }, 4000);
+    } catch (err: any) {
+      pwError = err.message ?? 'Error desconocido';
+    } finally {
+      pwSaving = false;
+    }
+  }
+
+  function cancelPassword() {
+    pwCurrent = pwNew = pwConfirm = pwError = '';
+    changingPassword = false;
+  }
   const MODULE_LABELS: Record<string, string> = {
     empresas: 'Empresas',
     proyectos: 'Proyectos',
@@ -330,31 +371,151 @@
       </div>
     {/if}
 
-    <!-- ── Acciones de cuenta ─────────────────────────────── -->
+    <!-- ── Cambiar contraseña ────────────────────────────── -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-      <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Acciones</h3>
-      <div class="flex flex-col sm:flex-row gap-3">
-        <button
-          disabled
-          class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-400 cursor-not-allowed"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-          </svg>
-          Cambiar contraseña
-          <span class="ml-auto text-xs bg-gray-100 px-1.5 py-0.5 rounded">Próximamente</span>
-        </button>
-
-        <button
-          onclick={() => { authStore.logout(); navigate('/'); }}
-          class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-red-200 text-sm text-red-600 hover:bg-red-50 transition-colors"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-          </svg>
-          Cerrar sesión
-        </button>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Seguridad</h3>
+        {#if !changingPassword}
+          <button
+            onclick={() => changingPassword = true}
+            class="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+          >
+            Cambiar contraseña
+          </button>
+        {/if}
       </div>
+
+      {#if pwSuccess}
+        <p class="text-sm text-green-600 flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+          Contraseña actualizada correctamente
+        </p>
+      {/if}
+
+      {#if !changingPassword && !pwSuccess}
+        <p class="text-sm text-gray-500">••••••••••••</p>
+      {/if}
+
+      {#if changingPassword}
+        <div class="space-y-4">
+          <!-- Contraseña actual -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Contraseña actual</label>
+            <div class="relative">
+              <input
+                type={showPwCurrent ? 'text' : 'password'}
+                bind:value={pwCurrent}
+                placeholder="Contraseña actual"
+                class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button type="button" onclick={() => showPwCurrent = !showPwCurrent}
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {#if showPwCurrent}
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                {:else}
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                {/if}
+              </button>
+            </div>
+          </div>
+
+          <!-- Nueva contraseña -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Nueva contraseña</label>
+            <div class="relative">
+              <input
+                type={showPwNew ? 'text' : 'password'}
+                bind:value={pwNew}
+                placeholder="Mínimo 8 caracteres"
+                class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button type="button" onclick={() => showPwNew = !showPwNew}
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {#if showPwNew}
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                {:else}
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                {/if}
+              </button>
+            </div>
+            <!-- Barra de fortaleza -->
+            {#if pwNew}
+              {@const strength = pwNew.length >= 12 && /[A-Z]/.test(pwNew) && /[0-9]/.test(pwNew) && /[^A-Za-z0-9]/.test(pwNew) ? 3 : pwNew.length >= 8 && (/[A-Z]/.test(pwNew) || /[0-9]/.test(pwNew)) ? 2 : 1}
+              <div class="mt-1.5 flex gap-1">
+                <div class="h-1 flex-1 rounded-full {strength >= 1 ? 'bg-red-400' : 'bg-gray-200'}"></div>
+                <div class="h-1 flex-1 rounded-full {strength >= 2 ? 'bg-yellow-400' : 'bg-gray-200'}"></div>
+                <div class="h-1 flex-1 rounded-full {strength >= 3 ? 'bg-green-500' : 'bg-gray-200'}"></div>
+              </div>
+              <p class="text-xs mt-0.5 {strength === 1 ? 'text-red-500' : strength === 2 ? 'text-yellow-600' : 'text-green-600'}">
+                {strength === 1 ? 'Débil' : strength === 2 ? 'Aceptable' : 'Fuerte'}
+              </p>
+            {/if}
+          </div>
+
+          <!-- Confirmar -->
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">Confirmar nueva contraseña</label>
+            <div class="relative">
+              <input
+                type={showPwConfirm ? 'text' : 'password'}
+                bind:value={pwConfirm}
+                placeholder="Repite la nueva contraseña"
+                onkeydown={(e) => { if (e.key === 'Enter') savePassword(); if (e.key === 'Escape') cancelPassword(); }}
+                class="w-full px-3 py-2 pr-10 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500
+                  {pwConfirm && pwConfirm !== pwNew ? 'border-red-400' : pwConfirm && pwConfirm === pwNew ? 'border-green-400' : 'border-gray-300'}"
+              />
+              <button type="button" onclick={() => showPwConfirm = !showPwConfirm}
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {#if showPwConfirm}
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+                {:else}
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                {/if}
+              </button>
+            </div>
+            {#if pwConfirm && pwConfirm !== pwNew}
+              <p class="text-xs text-red-500 mt-0.5">Las contraseñas no coinciden</p>
+            {/if}
+          </div>
+
+          {#if pwError}
+            <p class="text-sm text-red-500 flex items-center gap-1.5">
+              <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+              {pwError}
+            </p>
+          {/if}
+
+          <div class="flex gap-2 pt-1">
+            <button
+              onclick={savePassword}
+              disabled={pwSaving}
+              class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {pwSaving ? 'Guardando…' : 'Cambiar contraseña'}
+            </button>
+            <button
+              onclick={cancelPassword}
+              class="px-4 py-2 text-gray-600 hover:text-gray-800 rounded-lg text-sm transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      {/if}
+    </div>
+
+    <!-- ── Cerrar sesión ───────────────────────────────────── -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+      <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Sesión</h3>
+      <button
+        onclick={() => { authStore.logout(); navigate('/'); }}
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-red-200 text-sm text-red-600 hover:bg-red-50 transition-colors"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+        </svg>
+        Cerrar sesión
+      </button>
     </div>
 
   </div>

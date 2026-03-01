@@ -8,7 +8,7 @@ from sqlalchemy import select
 from datetime import datetime
 
 from app.schemas.auth import LoginRequest, TokenResponse, UserProfile, RefreshTokenRequest
-from app.core.security import verify_password, create_access_token, create_refresh_token
+from app.core.security import verify_password, create_access_token, create_refresh_token, hash_password
 from app.core.config import settings
 from app.db.session import get_db
 from app.db.base import import_models
@@ -279,6 +279,29 @@ async def upload_profile_photo(
     await db.commit()
     await db.refresh(current_user)
     return await get_current_user_profile(current_user, db)
+
+
+class ChangePasswordRequest(PydanticBaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.put("/me/password")
+async def change_password(
+    data: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cambiar contraseña del usuario autenticado"""
+    if not verify_password(data.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="La contraseña actual es incorrecta.")
+    if len(data.new_password) < 8:
+        raise HTTPException(status_code=400, detail="La nueva contraseña debe tener al menos 8 caracteres.")
+    if data.current_password == data.new_password:
+        raise HTTPException(status_code=400, detail="La nueva contraseña debe ser diferente a la actual.")
+    current_user.hashed_password = hash_password(data.new_password)
+    await db.commit()
+    return {"message": "Contraseña actualizada correctamente."}
 
 
 @router.post("/logout")
