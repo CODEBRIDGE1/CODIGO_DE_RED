@@ -105,7 +105,7 @@
     : `${import.meta.env.VITE_API_BASE_URL}/api/v1/audit-logs`;
 
   function getHeaders(): Record<string, string> {
-    const token = $authStore.token;
+    const token = localStorage.getItem('access_token');
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
