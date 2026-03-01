@@ -11,6 +11,7 @@
   import Obligaciones from './components/Obligaciones.svelte';
   import Proyectos from './components/Proyectos.svelte';
   import Cotizaciones from './components/Cotizaciones.svelte';
+  import Auditoria from './components/Auditoria.svelte';
   import AdminClientes from './components/admin/AdminClientes.svelte';
   import AdminConceptos from './components/admin/AdminConceptos.svelte';
   import AdminNiveles from './components/admin/AdminNiveles.svelte';
@@ -98,10 +99,7 @@
     {:else if $currentPath === '/usuarios'}
       <Usuarios />
     {:else if $currentPath === '/auditoria'}
-      <div class="p-6">
-        <h1 class="text-2xl font-bold">Auditoría</h1>
-        <p class="text-gray-600 mt-2">Módulo en construcción...</p>
-      </div>
+      <Auditoria />
     {:else if $currentPath === '/admin/clientes'}
       <AdminClientes />
     {:else if $currentPath === '/admin/conceptos'}

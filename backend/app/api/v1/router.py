@@ -1,6 +1,6 @@
 """API V1 Router"""
 from fastapi import APIRouter
-from app.api.v1 import auth, companies, users, documents, compliance, projects, quotes
+from app.api.v1 import auth, companies, users, documents, compliance, projects, quotes, audit_logs
 from app.api.v1.admin import router as admin_router
 
 api_router = APIRouter()
@@ -8,6 +8,9 @@ api_router = APIRouter()
 # Auth & Users
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 api_router.include_router(users.router, prefix="/users", tags=["Users"])
+
+# Audit Logs (tenant-scoped)
+api_router.include_router(audit_logs.router, prefix="/audit-logs", tags=["Audit Logs"])
 
 # Companies & Compliance
 api_router.include_router(companies.router, prefix="/companies", tags=["Companies"])
