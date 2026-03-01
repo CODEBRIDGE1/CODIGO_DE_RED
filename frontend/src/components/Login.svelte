@@ -97,6 +97,7 @@
         fullName: userProfile.full_name,
         tenantId: userProfile.tenant_id,
         isSuperadmin: userProfile.is_superadmin,
+        photoUrl: userProfile.photo_url ?? null,
         permissions: permissionsArray,
         securityModules: userProfile.security_modules ?? [],
         securityLevelId: userProfile.security_level_id ?? null,
