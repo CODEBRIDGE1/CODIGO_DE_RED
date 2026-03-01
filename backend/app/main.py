@@ -150,13 +150,13 @@ async def health_check():
     }
 
 
-# Include API router
-app.include_router(api_router, prefix=settings.API_V1_PREFIX)
-
-# Serve uploaded files (avatars, etc.)
+# Serve uploaded files (avatars, etc.) — debe ir ANTES del router principal
 import os as _os
 _os.makedirs("/app/uploads/avatars", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="/app/uploads"), name="uploads")
+
+# Include API router
+app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
 
 # ============================================
