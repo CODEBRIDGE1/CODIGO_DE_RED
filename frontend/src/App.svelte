@@ -12,6 +12,7 @@
   import Proyectos from './components/Proyectos.svelte';
   import Cotizaciones from './components/Cotizaciones.svelte';
   import Auditoria from './components/Auditoria.svelte';
+  import Perfil from './components/Perfil.svelte';
   import AdminClientes from './components/admin/AdminClientes.svelte';
   import AdminConceptos from './components/admin/AdminConceptos.svelte';
   import AdminNiveles from './components/admin/AdminNiveles.svelte';
@@ -51,6 +52,7 @@
               fullName: profile.full_name,
               tenantId: profile.tenant_id,
               isSuperadmin: profile.is_superadmin,
+              photoUrl: profile.photo_url ?? null,
               permissions: permissionsArray,
               securityModules: profile.security_modules ?? [],
               securityLevelId: profile.security_level_id ?? null,
@@ -100,6 +102,8 @@
       <Usuarios />
     {:else if $currentPath === '/auditoria'}
       <Auditoria />
+    {:else if $currentPath === '/perfil'}
+      <Perfil />
     {:else if $currentPath === '/admin/clientes'}
       <AdminClientes />
     {:else if $currentPath === '/admin/conceptos'}

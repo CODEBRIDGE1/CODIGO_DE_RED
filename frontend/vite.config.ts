@@ -25,6 +25,10 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           autoRewrite: true,
           protocolRewrite: 'http'
+        },
+        '/uploads': {
+          target: apiTarget,
+          changeOrigin: true
         }
       }
     },

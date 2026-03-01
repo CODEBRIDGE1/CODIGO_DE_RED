@@ -29,6 +29,7 @@ class UserProfile(BaseModel):
     is_superadmin: bool
     tenant_id: int | None
     tenant_name: str | None
+    photo_url: str | None = None
     roles: list[str] = []
     permissions: dict[str, list[str]] = {}  # {module: [actions]}
     security_modules: list[str] = []  # module keys from the user's security level

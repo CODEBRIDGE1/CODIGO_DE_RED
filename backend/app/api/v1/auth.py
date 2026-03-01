@@ -2,7 +2,7 @@
 Authentication Router
 Endpoints para login, refresh token, logout
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
@@ -221,6 +221,7 @@ async def get_current_user_profile(
         is_superadmin=current_user.is_superadmin,
         tenant_id=current_user.tenant_id,
         tenant_name=tenant_name,
+        photo_url=current_user.photo_url,
         roles=roles,
         permissions=permissions_dict,
         security_modules=security_modules,
@@ -229,11 +230,70 @@ async def get_current_user_profile(
     )
 
 
+from pydantic import BaseModel as PydanticBaseModel
+
+class UpdateProfileRequest(PydanticBaseModel):
+    full_name: str
+
+
+@router.put("/me", response_model=UserProfile)
+async def update_profile(
+    data: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Actualizar nombre del usuario autenticado"""
+    if not data.full_name or len(data.full_name.strip()) < 2:
+        raise HTTPException(status_code=400, detail="Nombre demasiado corto")
+    current_user.full_name = data.full_name.strip()
+    await db.commit()
+    await db.refresh(current_user)
+    return await get_current_user_profile(current_user, db)
+
+
+@router.post("/me/photo", response_model=UserProfile)
+async def upload_profile_photo(
+    file: "UploadFile",
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Subir foto de perfil del usuario autenticado"""
+    import os
+    from fastapi import UploadFile
+
+    ALLOWED = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    EXT_MAP = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif"}
+
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED:
+        raise HTTPException(status_code=400, detail="Formato no permitido. Usa JPG, PNG o WEBP.")
+
+    ext = EXT_MAP.get(content_type, "jpg")
+    filename = f"{current_user.id}.{ext}"
+    upload_dir = "/app/uploads/avatars"
+    os.makedirs(upload_dir, exist_ok=True)
+
+    # Eliminar foto anterior de otros formatos
+    for old_ext in EXT_MAP.values():
+        old_path = os.path.join(upload_dir, f"{current_user.id}.{old_ext}")
+        if old_path != os.path.join(upload_dir, filename) and os.path.exists(old_path):
+            os.remove(old_path)
+
+    filepath = os.path.join(upload_dir, filename)
+    contents = await file.read()
+    if len(contents) > 5 * 1024 * 1024:  # 5 MB
+        raise HTTPException(status_code=400, detail="La imagen no puede superar 5 MB.")
+
+    with open(filepath, "wb") as f:
+        f.write(contents)
+
+    current_user.photo_url = f"/uploads/avatars/{filename}"
+    await db.commit()
+    await db.refresh(current_user)
+    return await get_current_user_profile(current_user, db)
+
+
 @router.post("/logout")
 async def logout():
-    """
-    Logout endpoint
-    Invalida tokens (requiere implementar blacklist de tokens)
-    """
-    # TODO: Implementar blacklist de tokens en Redis
+    """Logout endpoint"""
     return {"message": "Logout exitoso"}

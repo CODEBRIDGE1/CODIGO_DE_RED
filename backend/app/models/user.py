@@ -15,6 +15,7 @@ class User(Base):
     full_name = Column(String(200), nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     is_superadmin = Column(Boolean, default=False, nullable=False)
+    photo_url = Column(String(500), nullable=True)
     last_login_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

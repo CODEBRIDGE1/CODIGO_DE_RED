@@ -9,6 +9,7 @@ export interface User {
   fullName: string;
   tenantId: number | null;
   isSuperadmin: boolean;
+  photoUrl: string | null;
   permissions: string[];
   securityModules: string[];       // module keys from the user's security level
   securityLevelId: number | null;  // id del nivel de seguridad asignado
@@ -73,6 +74,7 @@ function createAuthStore() {
           securityModules: [],
           securityLevelId: null,
           securityLevelName: null,
+          photoUrl: null,
           ...stored
         };
         set({

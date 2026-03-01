@@ -18,7 +18,7 @@
   let currentPath = $state(window.location.pathname);
   let showHelpModal = $state(false);
   let showUserDropdown = $state(false);
-  let showProfileModal = $state(false);
+  let showProfileModal = false; // deprecated — se usa /perfil ahora
   let showSearch = $state(false);
   let searchQuery = $state('');
   let searchInput = $state<HTMLInputElement | null>(null);
@@ -233,7 +233,7 @@
     function handleKeydown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         showSearch = false; showUserDropdown = false;
-        showProfileModal = false; showHelpModal = false;
+        showHelpModal = false;
         searchQuery = '';
         return;
       }
@@ -413,8 +413,12 @@
               onclick={() => showUserDropdown = !showUserDropdown}
               class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                {(user?.fullName ?? 'U')[0].toUpperCase()}
+              <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 overflow-hidden">
+                {#if user?.photoUrl}
+                  <img src={user.photoUrl} alt="foto" class="w-full h-full object-cover" />
+                {:else}
+                  {(user?.fullName ?? 'U')[0].toUpperCase()}
+                {/if}
               </div>
               <div class="hidden sm:block text-left">
                 <div class="text-sm font-medium text-gray-900 leading-tight">{user?.fullName || 'Usuario'}</div>
@@ -431,8 +435,12 @@
                 <!-- User header -->
                 <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
                   <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                      {(user?.fullName ?? 'U')[0].toUpperCase()}
+                    <div class="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+                      {#if user?.photoUrl}
+                        <img src={user.photoUrl} alt="foto" class="w-full h-full object-cover" />
+                      {:else}
+                        {(user?.fullName ?? 'U')[0].toUpperCase()}
+                      {/if}
                     </div>
                     <div class="min-w-0">
                       <div class="text-sm font-semibold text-gray-900 truncate">{user?.fullName}</div>
@@ -443,13 +451,13 @@
                 <!-- Options -->
                 <div class="py-1">
                   <button
-                    onclick={() => { showProfileModal = true; showUserDropdown = false; }}
+                    onclick={() => { navigate('/perfil'); showUserDropdown = false; }}
                     class="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-left"
                   >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                     </svg>
-                    Mi Información
+                    Mi Perfil
                   </button>
                   <button
                     disabled
@@ -722,72 +730,15 @@
     {/if}
   </div>
 
-<!-- ── Mi Información Modal ── -->
-{#if showProfileModal}
-  <div class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-    <div
-      transition:fly="{{ y: 20, duration: 250 }}"
-      class="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
-    >
-      <!-- Header -->
-      <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-        <div class="flex justify-between items-start">
-          <div class="flex items-center gap-4">
-            <div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-3xl font-bold">
-              {(user?.fullName ?? 'U')[0].toUpperCase()}
-            </div>
-            <div>
-              <h2 class="text-xl font-bold">{user?.fullName}</h2>
-              <p class="text-blue-200 text-sm mt-0.5">{user?.isSuperadmin ? 'Super Administrador' : 'Usuario'}</p>
-            </div>
-          </div>
-          <button onclick={() => showProfileModal = false} class="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <!-- Body -->
-      <div class="p-6 space-y-5">
-        <div>
-          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Correo electrónico</p>
-          <p class="text-sm text-gray-900">{user?.email}</p>
-        </div>
-        <div>
-          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Tipo de cuenta</p>
-          <p class="text-sm text-gray-900">
-            {user?.isSuperadmin ? '🛡️ Administrador del sistema' : '👤 Usuario de organización'}
-          </p>
-        </div>
-        {#if !user?.isSuperadmin}
-          <div>
-            <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Módulos con acceso</p>
-            {#if user?.securityModules && user.securityModules.length > 0}
-              <div class="flex flex-wrap gap-1.5">
-                {#each user.securityModules as mod}
-                  <span class="px-2.5 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium capitalize">{mod}</span>
-                {/each}
-              </div>
-            {:else}
-              <p class="text-sm text-gray-500">Acceso completo a todos los módulos</p>
-            {/if}
-          </div>
-        {/if}
-      </div>
-      <div class="px-6 pb-6">
-        <button
-          onclick={() => showProfileModal = false}
-          class="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
-        >
-          Cerrar
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
-
 <style>
+  .translate-x-0 {
+    transform: translateX(0);
+  }
+  
+  .-translate-x-full {
+    transform: translateX(-100%);
+  }
+</style>
   .translate-x-0 {
     transform: translateX(0);
   }
