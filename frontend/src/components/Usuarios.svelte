@@ -74,7 +74,7 @@
       if (searchTerm) params.append('search', searchTerm);
       if (filterActive !== null) params.append('is_active', filterActive.toString());
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/?${params}`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/?${params}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
@@ -151,7 +151,7 @@
         body.password = formData.password;
       }
 
-      const response = await fetch(url, {
+      const response = await authStore.fetch(url, {
         method,
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -189,7 +189,7 @@
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/${user.id}/`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/${user.id}/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

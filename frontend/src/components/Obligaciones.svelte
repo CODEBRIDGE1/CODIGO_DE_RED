@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from 'svelte';
+import { authStore } from '../stores/auth';
 import { fly } from 'svelte/transition';
 
 interface CompanySlim {
@@ -94,7 +95,7 @@ async function loadCompanies() {
     const token = localStorage.getItem('access_token');
     if (!token) throw new Error('No hay sesión activa. Por favor inicie sesión.');
 
-    const response = await fetch(
+    const response = await authStore.fetch(
       `${import.meta.env.VITE_API_BASE_URL}/api/v1/compliance/companies/`,
       { headers: { 'Authorization': `Bearer ${token}` } }
     );
@@ -128,7 +129,7 @@ async function saveClassification() {
     const token  = localStorage.getItem('access_token');
     const method = selectedCompany.tipo_centro_carga ? 'PUT' : 'POST';
 
-    const response = await fetch(
+    const response = await authStore.fetch(
       `${import.meta.env.VITE_API_BASE_URL}/api/v1/compliance/companies/${selectedCompany.id}/classification`,
       {
         method,
@@ -163,7 +164,7 @@ async function viewMatrix(company: CompanySlim) {
 
   try {
     const token    = localStorage.getItem('access_token');
-    const response = await fetch(
+    const response = await authStore.fetch(
       `${import.meta.env.VITE_API_BASE_URL}/api/v1/compliance/companies/${company.id}/compliance-matrix`,
       { headers: { 'Authorization': `Bearer ${token}` } }
     );

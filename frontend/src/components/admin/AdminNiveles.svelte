@@ -159,7 +159,7 @@
         ? `${API}/api/v1/admin/security-levels/${editingLevel.id}`
         : `${API}/api/v1/admin/security-levels/`;
       const method = editingLevel ? 'PUT' : 'POST';
-      const res = await fetch(url, { method, headers, body });
+      const res = await authStore.fetch(url, { method, headers, body });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.detail || 'Error al guardar');
@@ -184,7 +184,7 @@
     if (!levelToDelete) return;
     deleting = true;
     try {
-      const res = await fetch(`${API}/api/v1/admin/security-levels/${levelToDelete.id}`, {
+      const res = await authStore.fetch(`${API}/api/v1/admin/security-levels/${levelToDelete.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${$authStore.accessToken}` },
       });

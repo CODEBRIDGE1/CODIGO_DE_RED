@@ -107,7 +107,7 @@
   async function loadRequirements() {
     try {
       loading = true;
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/compliance/admin/requirements`,
         {
           headers: { 'Authorization': `Bearer ${$authStore.accessToken}` }
@@ -168,7 +168,7 @@
       
       const method = isEditing ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authStore.fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -201,7 +201,7 @@
     if (!requirementToDelete) return;
 
     try {
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/compliance/admin/requirements/${requirementToDelete.id}`,
         {
           method: 'DELETE',
@@ -249,7 +249,7 @@
   async function loadRules(requirementId: number) {
     try {
       loadingRules = true;
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/compliance/admin/rules`,
         {
           headers: { 'Authorization': `Bearer ${$authStore.accessToken}` }
@@ -309,7 +309,7 @@
         ? { estado_aplicabilidad: ruleForm.estado_aplicabilidad, notas: ruleForm.notas }
         : { requirement_id: currentRequirementForRules.id, ...ruleForm };
 
-      const response = await fetch(url, {
+      const response = await authStore.fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -337,7 +337,7 @@
     if (!confirm(`¿Eliminar regla para ${getTipoLabel(rule.tipo_centro_carga)}?`)) return;
 
     try {
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/compliance/admin/rules/${rule.id}`,
         {
           method: 'DELETE',

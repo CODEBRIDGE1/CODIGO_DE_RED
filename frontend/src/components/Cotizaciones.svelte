@@ -98,7 +98,7 @@
   async function loadQuotes() {
     try {
       loading = true;
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/quotes/`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/quotes/`, {
         headers: { 'Authorization': `Bearer ${$authStore.accessToken}` }
       });
 
@@ -116,7 +116,7 @@
 
   async function loadCompanies() {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/`, {
         headers: { 'Authorization': `Bearer ${$authStore.accessToken}` }
       });
 
@@ -132,7 +132,7 @@
   async function loadQuoteItems() {
     try {
       loadingItems = true;
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/quotes/catalog`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/quotes/catalog`, {
         headers: { 'Authorization': `Bearer ${$authStore.accessToken}` }
       });
 
@@ -290,7 +290,7 @@
             lines: lines
           };
       
-      const response = await fetch(url, {
+      const response = await authStore.fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -323,7 +323,7 @@
     if (!quoteToDelete) return;
 
     try {
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/quotes/${quoteToDelete.id}`,
         {
           method: 'DELETE',
@@ -359,7 +359,7 @@
     if (!quoteToSend) return;
 
     try {
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/quotes/${quoteToSend.id}`,
         {
           method: 'PUT',
@@ -557,7 +557,7 @@
     if (!quoteToAccept) return;
     try {
       acceptingQuote = true;
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/quotes/${quoteToAccept.id}`,
         {
           method: 'PUT',

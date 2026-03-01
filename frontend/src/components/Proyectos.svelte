@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-
-	function getToken(): string {
+        import { authStore } from '../stores/auth';
 		return localStorage.getItem('access_token') || '';
 	}
 
@@ -196,7 +195,7 @@
 	async function loadProjects() {
 		try {
 			loading = true;
-			const response = await fetch(
+			const response = await authStore.fetch(
 				`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/`,
 				{ headers: { Authorization: `Bearer ${getToken()}` } }
 			);
@@ -212,7 +211,7 @@
 
 	async function loadCompanies() {
 		try {
-			const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/?page=1&page_size=100`, {
+			const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/?page=1&page_size=100`, {
 				headers: { Authorization: `Bearer ${getToken()}` }
 			});
 			
@@ -242,7 +241,7 @@
 				start_date: formData.start_date || null,
 				due_date: formData.due_date || null
 			};
-			const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/`, {
+			const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -274,7 +273,7 @@
 
 	async function loadProjectDetail(projectId: number) {
 		try {
-			const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/${projectId}`, {
+			const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/${projectId}`, {
 				headers: { Authorization: `Bearer ${getToken()}` }
 			});
 			if (!response.ok) throw new Error('Error al cargar detalle');
@@ -287,7 +286,7 @@
 
 	async function updateTaskStatus(taskId: number, newStatus: string) {
 		try {
-			const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/tasks/${taskId}`, {
+			const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/tasks/${taskId}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json',
@@ -312,7 +311,7 @@
 		if (!selectedProject) return;
 
 		try {
-			const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/${selectedProject.id}/tasks`, {
+			const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/${selectedProject.id}/tasks`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -332,7 +331,7 @@
 					if (customTaskEvidenceComment) {
 						formData.append('comment', customTaskEvidenceComment);
 					}
-					const evResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/tasks/${createdTask.id}/evidences`, {
+					const evResponse = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/tasks/${createdTask.id}/evidences`, {
 						method: 'POST',
 						headers: {
 							Authorization: `Bearer ${getToken()}`
@@ -360,7 +359,7 @@
 		if (!selectedProject) return;
 		try {
 			loadingObligations = true;
-			const response = await fetch(
+			const response = await authStore.fetch(
 				`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/${selectedProject.id}/available-obligations`,
 				{ headers: { Authorization: `Bearer ${getToken()}` } }
 			);
@@ -384,7 +383,7 @@
 				const extra = obligationAdditionalContextById[reqId] ?? '';
 				const baseDescription = obl?.descripcion ?? '';
 				const files = obligationEvidenceFilesById[reqId] ?? [];
-				const taskRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/${selectedProject!.id}/tasks`, {
+				const taskRes = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/${selectedProject!.id}/tasks`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
@@ -409,7 +408,7 @@
 						if (extra) {
 							formData.append('comment', extra);
 						}
-						const evRes = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/tasks/${createdTask.id}/evidences`, {
+						const evRes = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/tasks/${createdTask.id}/evidences`, {
 							method: 'POST',
 							headers: {
 								Authorization: `Bearer ${getToken()}`
@@ -444,7 +443,7 @@
 	async function updateTaskProgress(taskId: number, progress: number) {
 		if (progress < 0 || progress > 100) return;
 		try {
-			await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/tasks/${taskId}`, {
+			await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/tasks/${taskId}`, {
 				method: 'PUT',
 				headers: {
 					'Content-Type': 'application/json',
@@ -467,7 +466,7 @@
 		loadingEvidences = true;
 		taskEvidences = [];
 		try {
-			const response = await fetch(
+			const response = await authStore.fetch(
 				`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/tasks/${task.id}/evidences`,
 				{ headers: { Authorization: `Bearer ${getToken()}` } }
 			);
@@ -506,7 +505,7 @@
 			formData.append('evidence_type', evidenceType);
 			if (evidenceComment) formData.append('comment', evidenceComment);
 
-			const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/tasks/${selectedTask.id}/evidences`, {
+			const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/tasks/${selectedTask.id}/evidences`, {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${getToken()}`
@@ -535,7 +534,7 @@
 		deletingEvidenceId = evidenceId;
 		confirmingDeleteId = null;
 		try {
-			const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/evidences/${evidenceId}`, {
+			const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/evidences/${evidenceId}`, {
 				method: 'DELETE',
 				headers: {
 					Authorization: `Bearer ${getToken()}`
@@ -639,7 +638,7 @@
 				await Promise.all(
 					selectedProject.tasks.map(async (task) => {
 						try {
-							const res = await fetch(
+							const res = await authStore.fetch(
 								`${import.meta.env.VITE_API_BASE_URL}/api/v1/projects/tasks/${task.id}/evidences`,
 								{ headers: { Authorization: `Bearer ${getToken()}` } }
 							);

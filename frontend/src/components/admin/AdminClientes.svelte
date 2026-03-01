@@ -145,7 +145,7 @@
     if (securityLevels.length > 0) return; // ya cargados
     loadingSecurityLevels = true;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/security-levels/`, {
+      const res = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/security-levels/`, {
         headers: { Authorization: `Bearer ${$authStore.accessToken}` }
       });
       if (res.ok) securityLevels = await res.json();
@@ -211,17 +211,8 @@
     try {
       loading = true;
       errorMessage = '';
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/tenants/`, {
-        headers: {
-          'Authorization': `Bearer ${$authStore.accessToken}`
-        }
-      });
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/tenants/`);
 
-      if (response.status === 401) {
-        authStore.logout();
-        navigate('/');
-        return;
-      }
       if (!response.ok) throw new Error('Error al cargar clientes');
       
       const data = await response.json();
@@ -291,7 +282,7 @@
       
       const method = isEditing ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authStore.fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -324,7 +315,7 @@
     if (!tenantToDelete) return;
 
     try {
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/tenants/${tenantToDelete.id}/`,
         {
           method: 'DELETE',
@@ -366,7 +357,7 @@
   async function loadTenantUsers(tenantId: number) {
     try {
       loadingUsers = true;
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/users/?tenant_id=${tenantId}`,
         { headers: { 'Authorization': `Bearer ${$authStore.accessToken}` } }
       );
@@ -425,7 +416,7 @@
       };
       if (userForm.password) payload.password = userForm.password;
 
-      const response = await fetch(url, {
+      const response = await authStore.fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -452,7 +443,7 @@
 
   async function toggleUserStatus(user: TenantUser) {
     try {
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/users/${user.id}/`,
         {
           method: 'PUT',
@@ -493,7 +484,7 @@
   async function loadTenantCompanies(tenantId: number) {
     try {
       loadingCompanies = true;
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/companies/?tenant_id=${tenantId}`,
         { headers: { 'Authorization': `Bearer ${$authStore.accessToken}` } }
       );
@@ -564,7 +555,7 @@
         if (payload[k] === '') payload[k] = null;
       });
 
-      const response = await fetch(url, {
+      const response = await authStore.fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -594,7 +585,7 @@
     companyDocs = [];
     loadingDocs = true;
     try {
-      const res = await fetch(
+      const res = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/companies/${company.id}/documents/`,
         { headers: { Authorization: `Bearer ${$authStore.accessToken}` } }
       );
@@ -610,7 +601,7 @@
 
   async function downloadDocument(doc: CompanyDocument) {
     try {
-      const res = await fetch(
+      const res = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/companies/${doc.company_id}/documents/${doc.id}/download/`,
         { headers: { Authorization: `Bearer ${$authStore.accessToken}` } }
       );
@@ -625,7 +616,7 @@
 
   async function viewDocument(doc: CompanyDocument) {
     try {
-      const res = await fetch(
+      const res = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/companies/${doc.company_id}/documents/${doc.id}/download/`,
         { headers: { Authorization: `Bearer ${$authStore.accessToken}` } }
       );

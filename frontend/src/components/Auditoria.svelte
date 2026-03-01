@@ -133,7 +133,7 @@
       if (filterDateTo) params.set('date_to', filterDateTo);
       if (filterUser && isSuperadmin) params.set('user_id', filterUser);
 
-      const res = await fetch(`${BASE}?${params}`, { headers: getHeaders() });
+      const res = await authStore.fetch(`${BASE}?${params}`, { headers: getHeaders() });
       if (!res.ok) throw new Error(`Error ${res.status}`);
       const data: AuditResponse = await res.json();
       logs = data.items;

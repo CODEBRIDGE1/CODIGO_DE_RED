@@ -130,7 +130,7 @@
       // Carga todas las empresas para filtrado client-side en tiempo real
       const params = new URLSearchParams({ page: '1', page_size: '500' });
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/?${params}`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/?${params}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
@@ -199,7 +199,7 @@
     deletingCompany = true;
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/${companyToDelete.id}/`,
         { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
       );
@@ -223,7 +223,7 @@
   async function reactivateCompany(company: Company) {
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/${company.id}/`,
         {
           method: 'PUT',
@@ -252,7 +252,7 @@
 
   async function loadCompanyDetails(id: number) {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/${id}/`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/${id}/`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -325,7 +325,7 @@
         cleanData.costo_mensual_aproximado = formData.costo_mensual_aproximado;
       }
 
-      const response = await fetch(url, {
+      const response = await authStore.fetch(url, {
         method,
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -392,7 +392,7 @@
     const token = localStorage.getItem('access_token');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${companyId}/documents/`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${companyId}/documents/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -439,7 +439,7 @@
         }
       }, 200);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${selectedCompanyForDocs.id}/upload`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${selectedCompanyForDocs.id}/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -480,7 +480,7 @@
     const token = localStorage.getItem('access_token');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${selectedCompanyForDocs.id}/documents/${documentId}/download`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${selectedCompanyForDocs.id}/documents/${documentId}/download`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -504,7 +504,7 @@
     const token = localStorage.getItem('access_token');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${selectedCompanyForDocs.id}/documents/${documentId}/download`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${selectedCompanyForDocs.id}/documents/${documentId}/download`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -525,7 +525,7 @@
     const token = localStorage.getItem('access_token');
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${selectedCompanyForDocs.id}/documents/${documentId}`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${selectedCompanyForDocs.id}/documents/${documentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

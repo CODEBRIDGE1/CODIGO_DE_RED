@@ -100,12 +100,49 @@ async def refresh_token(
 ):
     """
     Refresh token endpoint
-    Genera nuevo access token usando refresh token
+    Genera nuevo access token usando un refresh token válido
     """
-    # TODO: Implementar validación de refresh token y generación de nuevo access token
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Endpoint pendiente de implementación"
+    from app.core.security import decode_token
+
+    payload = decode_token(request.refresh_token)
+
+    if not payload or payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token inválido o expirado"
+        )
+
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token malformado"
+        )
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario no encontrado o inactivo"
+        )
+
+    token_data = {
+        "sub": str(user.id),
+        "email": user.email,
+        "tenant_id": user.tenant_id,
+        "is_superadmin": user.is_superadmin
+    }
+
+    new_access_token = create_access_token(token_data)
+    new_refresh_token = create_refresh_token(token_data)
+
+    return TokenResponse(
+        access_token=new_access_token,
+        refresh_token=new_refresh_token,
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
 
 

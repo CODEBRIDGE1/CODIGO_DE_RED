@@ -179,7 +179,7 @@
       });
       if (quotesSearch) params.set('search', quotesSearch);
 
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/quotes/?${params}`,
         { headers: { 'Authorization': `Bearer ${$authStore.accessToken}` } }
       );
@@ -214,7 +214,7 @@
   async function confirmStatusChange() {
     if (!quoteForStatus) return;
     try {
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/quotes/${quoteForStatus.id}/status`,
         {
           method: 'PUT',
@@ -273,7 +273,7 @@
         if (!r.ok) throw new Error('Error al guardar precio');
       }
       // Reload quote data
-      const res = await fetch(
+      const res = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/quotes/${selectedQuote.id}`,
         { headers: { 'Authorization': `Bearer ${$authStore.accessToken}` } }
       );
@@ -296,7 +296,7 @@
     if (!selectedQuote) return;
     savingDetails = true;
     try {
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/quotes/${selectedQuote.id}/details`,
         {
           method: 'PATCH',
@@ -507,7 +507,7 @@
   async function loadItems() {
     try {
       loading = true;
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/quote-items/`, {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/quote-items/`, {
         headers: {
           'Authorization': `Bearer ${$authStore.accessToken}`
         }
@@ -577,7 +577,7 @@
         is_active: true
       };
 
-      const response = await fetch(url, {
+      const response = await authStore.fetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
@@ -610,7 +610,7 @@
     if (!itemToDelete) return;
 
     try {
-      const response = await fetch(
+      const response = await authStore.fetch(
         `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/quote-items/${itemToDelete.id}/`,
         {
           method: 'DELETE',
