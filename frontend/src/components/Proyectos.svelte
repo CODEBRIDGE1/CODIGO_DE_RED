@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-        import { authStore } from '../stores/auth';
+	import { authStore } from '../stores/auth';
+
+	function getToken(): string {
 		return localStorage.getItem('access_token') || '';
 	}
 
