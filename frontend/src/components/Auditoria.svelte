@@ -411,6 +411,7 @@
 
 <!-- Detail Modal -->
 {#if selectedLog}
+  {@const log = selectedLog}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div
     class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
@@ -434,7 +435,6 @@
       </div>
 
       <div class="px-6 py-5 space-y-4">
-        {@const log = selectedLog}
 
         <div class="grid grid-cols-2 gap-4 text-sm">
           <div>
