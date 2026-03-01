@@ -4,13 +4,95 @@ Middleware y utilities para registro automático de eventos
 """
 import json
 import hashlib
+import logging
+import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 from fastapi import Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant import TenantContext
 from app.db.session import AsyncSessionLocal
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Path → (module_key, action, entity_type) mapping helpers
+# ---------------------------------------------------------------------------
+
+_SINGULAR = {
+    'companies': 'company',
+    'projects': 'project',
+    'users': 'user',
+    'quotes': 'quote',
+    'auth': 'session',
+    'compliance': 'compliance',
+    'obligations': 'obligation',
+    'evidences': 'evidence',
+    'tasks': 'task',
+    'documents': 'document',
+    'tenants': 'tenant',
+    'quote-items': 'quote_item',
+    'security-levels': 'security_level',
+    'audit-logs': 'audit_log',
+}
+
+_METHOD_ACTION = {
+    'POST': 'create',
+    'PUT': 'update',
+    'PATCH': 'update',
+    'DELETE': 'delete',
+}
+
+# Paths that never need to be logged
+_SKIP_PATHS = {
+    '/', '/health', '/docs', '/redoc', '/openapi.json',
+    '/api/v1/health', '/api/v1/auth/me', '/api/v1/auth/refresh',
+}
+
+
+def _extract_module_action(method: str, path: str) -> Tuple[str, str, str, Optional[int]]:
+    """
+    Devuelve (module_key, action, entity_type, entity_id) desde el método HTTP y path.
+    """
+    # Strip prefix
+    p = path.lstrip('/')
+    if p.startswith('api/v1/'):
+        p = p[7:]
+    if p.startswith('admin/'):
+        p = p[6:]
+
+    parts = [x for x in p.split('/') if x]
+    if not parts:
+        return 'system', method.lower(), 'endpoint', None
+
+    module = parts[0]  # e.g. 'companies', 'auth', 'projects'
+
+    # Detect numeric entity_id
+    entity_id: Optional[int] = None
+    for part in parts[1:]:
+        if part.isdigit():
+            entity_id = int(part)
+            break
+
+    # Sub-action from path (e.g. auth/login, auth/logout)
+    if method == 'POST' and len(parts) > 1 and not parts[1].isdigit():
+        action = parts[1]  # login, logout, evidences, comments…
+    else:
+        action = _METHOD_ACTION.get(method, method.lower())
+
+    entity_type = _SINGULAR.get(module, module.rstrip('s'))
+    return module, action, entity_type, entity_id
+
+
+def _decode_token_safe(token: str) -> Optional[Dict]:
+    """Decodifica un JWT sin lanzar excepciones."""
+    try:
+        from jose import jwt, JWTError
+        from app.core.config import settings
+        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except Exception:
+        return None
 
 
 async def log_audit_event(
@@ -207,37 +289,89 @@ async def log_file_operation(
 
 class AuditMiddleware:
     """
-    Middleware para loguear automáticamente requests/responses
+    Middleware ASGI que registra automáticamente todas las operaciones de escritura
+    (POST, PUT, PATCH, DELETE) en la tabla audit_logs.
+    Solo registra respuestas exitosas (2xx). Los errores del cliente (4xx) y del
+    servidor (5xx) no se registran como acciones de auditoría.
     """
-    
+
     def __init__(self, app):
         self.app = app
-    
+
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        
-        # Extraer info del request
+
         request = Request(scope, receive)
-        
-        # Generar request_id único
-        import uuid
+        method = request.method
+        path = request.url.path
+
+        # Generar contexto del request (siempre, para que get_audit_context funcione)
         request_id = str(uuid.uuid4())
-        scope["request_id"] = request_id
-        
-        # Extraer IP y user agent
         ip_address = request.client.host if request.client else "unknown"
         user_agent = request.headers.get("user-agent", "unknown")
-        
-        # Almacenar para uso en endpoints
+
         scope["audit_context"] = {
             "request_id": request_id,
             "ip_address": ip_address,
-            "user_agent": user_agent
+            "user_agent": user_agent,
         }
-        
-        await self.app(scope, receive, send)
+
+        # No loguear GETs ni rutas de sistema
+        if method in ("GET", "HEAD", "OPTIONS") or path in _SKIP_PATHS:
+            await self.app(scope, receive, send)
+            return
+
+        # Capturar el status code de la respuesta
+        status_code = [200]
+
+        async def capture_send(message):
+            if message["type"] == "http.response.start":
+                status_code[0] = message.get("status", 200)
+            await send(message)
+
+        await self.app(scope, receive, capture_send)
+
+        # Solo loguear operaciones exitosas
+        if status_code[0] >= 400:
+            return
+
+        # Decodificar JWT para obtener user_id y tenant_id
+        user_id: Optional[int] = None
+        tenant_id: Optional[int] = None
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            payload = _decode_token_safe(auth_header[7:])
+            if payload:
+                try:
+                    user_id = int(payload["sub"])
+                    tenant_id = payload.get("tenant_id")
+                except (KeyError, TypeError, ValueError):
+                    pass
+
+        # Mapear path → módulo / acción
+        module_key, action, entity_type, entity_id = _extract_module_action(method, path)
+
+        # Escribir en audit_logs de forma asíncrona con su propia sesión
+        try:
+            async with AsyncSessionLocal() as db:
+                await log_audit_event(
+                    db=db,
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    module_key=module_key,
+                    action=action,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    after_data={"path": path, "method": method, "status": status_code[0]},
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                    request_id=request_id,
+                )
+                await db.commit()
+        except Exception as exc:
+            logger.warning(f"[AuditMiddleware] No se pudo registrar evento: {exc}")
 
 
 def get_audit_context(request: Request) -> Dict[str, str]:
