@@ -26,7 +26,7 @@ class CompanyBase(BaseModel):
     estado: Optional[str] = Field(None, max_length=100)
     codigo_postal: Optional[str] = Field(None, max_length=10)
     
-    rpu: Optional[str] = Field(None, min_length=5, max_length=50)
+    rpu: Optional[str] = Field(None, max_length=50)
     tipo_suministro: Optional[TipoSuministroEnum] = None
     tension_suministro: Optional[str] = Field(None, max_length=50)
     
@@ -69,7 +69,7 @@ class CompanyUpdate(BaseModel):
     estado: Optional[str] = Field(None, max_length=100)
     codigo_postal: Optional[str] = Field(None, max_length=10)
     
-    rpu: Optional[str] = Field(None, min_length=5, max_length=50)
+    rpu: Optional[str] = Field(None, max_length=50)
     tipo_suministro: Optional[TipoSuministroEnum] = None
     tension_suministro: Optional[str] = Field(None, max_length=50)
     
@@ -104,3 +104,16 @@ class CompanyListResponse(BaseModel):
     companies: list[CompanyResponse]
     page: int
     page_size: int
+
+
+class CompanySlimResponse(BaseModel):
+    """Respuesta slim para listados que no necesitan todos los campos (ej. Matriz de Obligaciones)"""
+    id: int
+    razon_social: str
+    rfc: str
+    is_active: bool
+    tipo_centro_carga: Optional[str] = None
+    justificacion: Optional[str] = None
+
+    class Config:
+        from_attributes = True

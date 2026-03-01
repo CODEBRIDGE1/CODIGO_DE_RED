@@ -21,6 +21,10 @@
   let errorMessage = $state('');
   let successMessage = $state('');
   
+  // Detectar si estamos en la vista de admin
+  const isAdminView = $derived(window.location.pathname === '/admin/usuarios');
+  const currentUser = $derived($authStore.user);
+  
   // Filtros
   let searchTerm = $state('');
   let filterActive = $state<boolean | null>(null);
@@ -35,7 +39,8 @@
     email: '',
     full_name: '',
     password: '',
-    is_active: true
+    is_active: true,
+    is_superadmin: false
   });
 
   const accessToken = $derived($authStore.accessToken);
@@ -69,7 +74,7 @@
       if (searchTerm) params.append('search', searchTerm);
       if (filterActive !== null) params.append('is_active', filterActive.toString());
 
-      const response = await fetch(`/api/v1/users/?${params}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/?${params}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
@@ -100,7 +105,8 @@
       email: '',
       full_name: '',
       password: '',
-      is_active: true
+      is_active: true,
+      is_superadmin: false
     };
     showModal = true;
   }
@@ -112,7 +118,8 @@
       email: user.email,
       full_name: user.full_name,
       password: '',
-      is_active: user.is_active
+      is_active: user.is_active,
+      is_superadmin: user.is_superadmin || false
     };
     showModal = true;
   }
@@ -133,6 +140,11 @@
         full_name: formData.full_name,
         is_active: formData.is_active
       };
+      
+      // Solo superadmin puede asignar rol de superadmin
+      if (isAdminView && currentUser?.isSuperadmin) {
+        body.is_superadmin = formData.is_superadmin;
+      }
       
       // Solo incluir password si se proporcionó
       if (formData.password) {
@@ -177,7 +189,7 @@
     }
 
     try {
-      const response = await fetch(`/api/v1/users/${user.id}/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/${user.id}/`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -479,6 +491,22 @@
             />
             <p class="text-xs text-gray-500 mt-1">Mínimo 8 caracteres</p>
           </div>
+
+          <!-- Tipo de Usuario (solo para superadmin) -->
+          {#if isAdminView && currentUser?.isSuperadmin}
+            <div class="flex items-center">
+              <input
+                type="checkbox"
+                id="is_superadmin"
+                bind:checked={formData.is_superadmin}
+                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label for="is_superadmin" class="ml-2 block text-sm text-gray-700">
+                <span class="font-medium">Superadministrador</span>
+                <span class="text-xs text-gray-500 block">Acceso completo al sistema</span>
+              </label>
+            </div>
+          {/if}
 
           <!-- Estado -->
           <div class="flex items-center">

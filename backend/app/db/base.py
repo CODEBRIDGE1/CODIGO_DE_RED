@@ -22,7 +22,7 @@ def import_models():
     from app.models import (
         tenant, license, user, role, permission, module, audit_log,
         company, obligation, project, evidence, quote, compliance, document,
-        quote_item
+        quote_item, security_level
     )
 
 

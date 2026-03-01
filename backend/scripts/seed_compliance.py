@@ -16,6 +16,7 @@ from app.models.tenant import Tenant
 from app.models.role import Role
 from app.models.permission import Permission
 from app.models.module import Module
+from app.models.security_level import SecurityLevel
 from app.models.user import User
 from app.models.company import Company
 from app.models.audit_log import AuditLog

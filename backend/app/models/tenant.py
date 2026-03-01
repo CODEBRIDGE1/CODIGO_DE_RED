@@ -1,7 +1,7 @@
 """
 Tenant Model - Cliente de la plataforma SaaS
 """
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -33,6 +33,13 @@ class Tenant(Base):
         nullable=False,
         index=True
     )
+    
+    # Información de contacto
+    contact_name = Column(String(200), nullable=True)
+    contact_email = Column(String(255), nullable=True)
+    contact_phone = Column(String(50), nullable=True)
+    address = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

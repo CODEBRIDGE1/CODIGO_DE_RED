@@ -231,14 +231,15 @@ async def list_projects(
             company_id=project.company_id,
             company_name=company.razon_social,
             name=project.name,
-            description=project.description,
             project_type=project.project_type,
             status=project.status,
             priority=project.priority,
             start_date=project.start_date,
             due_date=project.due_date,
-            created_at=project.created_at,
-            metrics=metrics
+            total_tasks=total_tasks,
+            completed_tasks=completed,
+            progress_percentage=int(round((completed / total_tasks * 100) if total_tasks > 0 else 0)
+            ),
         ))
     
     return response
@@ -397,6 +398,7 @@ async def get_project(
             code=task.code,
             title=task.title,
             description=task.description,
+            notes=task.notes,
             task_type=task.task_type,
             status=task.status,
             assignee_user_id=task.assignee_user_id,
@@ -836,10 +838,6 @@ async def delete_evidence(
     evidence = result.scalars().first()
     if not evidence:
         raise HTTPException(status_code=404, detail="Evidence not found")
-    
-    # Verificar permisos (solo el que subió o admin puede borrar)
-    if evidence.uploaded_by != current_user.id and not current_user.is_superadmin:
-        raise HTTPException(status_code=403, detail="Not authorized to delete this evidence")
     
     # Eliminar de storage
     try:

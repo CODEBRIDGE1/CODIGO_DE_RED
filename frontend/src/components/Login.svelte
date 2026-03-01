@@ -8,13 +8,44 @@
   let showPassword = $state(false)
   let loading = $state(false)
   let error = $state('')
+  let emailTouched = $state(false)
+  let passwordTouched = $state(false)
+
+  // RFC 5322-compatible: allows user+tag@domain.tld, dots, hyphens, etc.
+  function isValidEmail(val: string): boolean {
+    return /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/.test(val.trim());
+  }
+
+  const emailError = $derived(
+    emailTouched && email.trim().length > 0 && !isValidEmail(email)
+      ? 'Ingresa un correo electrónico válido'
+      : emailTouched && email.trim().length === 0
+        ? 'El correo es obligatorio'
+        : ''
+  );
+
+  const passwordError = $derived(
+    passwordTouched && password.length === 0
+      ? 'La contraseña es obligatoria'
+      : passwordTouched && password !== password.trim()
+        ? 'La contraseña no debe tener espacios al inicio o al final'
+        : ''
+  );
+
+  const formValid = $derived(
+    isValidEmail(email) && password.trim().length > 0
+  );
 
   async function handleLogin() {
+    emailTouched = true;
+    passwordTouched = true;
+    if (!formValid) return;
+
     loading = true
     error = ''
     
     try {
-      const response = await fetch(`/api/v1/auth/login/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/login`, {
         method: 'POST',
         mode: 'cors',
         credentials: 'omit',
@@ -22,8 +53,8 @@
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email,
-          password
+          email: email.trim(),
+          password: password.trim()
         })
       })
 
@@ -34,7 +65,7 @@
       }
 
       // Obtener perfil del usuario con el token
-      const profileResponse = await fetch('/api/v1/auth/me', {
+      const profileResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/auth/me`, {
         headers: {
           'Authorization': `Bearer ${data.access_token}`
         }
@@ -66,14 +97,17 @@
         fullName: userProfile.full_name,
         tenantId: userProfile.tenant_id,
         isSuperadmin: userProfile.is_superadmin,
-        permissions: permissionsArray
+        permissions: permissionsArray,
+        securityModules: userProfile.security_modules ?? [],
+        securityLevelId: userProfile.security_level_id ?? null,
+        securityLevelName: userProfile.security_level_name ?? null
       };
 
       // Login en el store
       authStore.login(data.access_token, data.refresh_token, user);
       
       if (rememberMe) {
-        localStorage.setItem('remember_email', email)
+        localStorage.setItem('remember_email', email.trim())
       } else {
         localStorage.removeItem('remember_email')
       }
@@ -218,19 +252,42 @@
           </label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="h-5 w-5 {emailTouched && emailError ? 'text-red-400' : 'text-gray-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
             <input
-              type="email"
+              type="text"
               id="email"
               bind:value={email}
-              placeholder="admin@tenant-demo.com"
-              required
-              class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              oninput={() => emailTouched = true}
+              onblur={() => emailTouched = true}
+              autocomplete="email"
+              inputmode="email"
+              placeholder="usuario+etiqueta@empresa.com"
+              class="block w-full pl-10 pr-10 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition
+                {emailTouched && emailError
+                  ? 'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400'
+                  : emailTouched && !emailError && email.trim()
+                    ? 'border-green-400 bg-green-50'
+                    : 'border-gray-300'}"
             />
+            {#if emailTouched && !emailError && email.trim()}
+              <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+            {/if}
           </div>
+          {#if emailError}
+            <p class="mt-1.5 text-xs text-red-600 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              {emailError}
+            </p>
+          {/if}
         </div>
 
         <!-- Password Field -->
@@ -240,7 +297,7 @@
           </label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="h-5 w-5 {passwordTouched && passwordError ? 'text-red-400' : 'text-gray-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
@@ -248,14 +305,20 @@
               type={showPassword ? 'text' : 'password'}
               id="password"
               bind:value={password}
+              oninput={() => passwordTouched = true}
+              onblur={() => passwordTouched = true}
+              autocomplete="current-password"
               placeholder="••••••••"
-              required
-              class="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              class="block w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition
+                {passwordTouched && passwordError
+                  ? 'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400'
+                  : 'border-gray-300'}"
             />
             <button
               type="button"
               onclick={() => showPassword = !showPassword}
               class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+              tabindex="-1"
             >
               {#if showPassword}
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -269,6 +332,14 @@
               {/if}
             </button>
           </div>
+          {#if passwordError}
+            <p class="mt-1.5 text-xs text-red-600 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              {passwordError}
+            </p>
+          {/if}
         </div>
 
         <!-- Remember Me -->
@@ -287,8 +358,11 @@
         <!-- Submit Button -->
         <button
           type="submit"
-          disabled={loading}
-          class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
+          disabled={loading || !formValid}
+          class="w-full text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center
+            {formValid && !loading
+              ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
+              : 'bg-gray-300 text-gray-400 cursor-not-allowed'}"
         >
           {#if loading}
             <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -301,24 +375,12 @@
           {/if}
         </button>
 
-        <!-- Help Links -->
-        <div class="text-center space-y-2">
-          <button type="button" class="text-sm text-blue-600 hover:text-blue-800">
-            ¿Olvidó su contraseña?
-          </button>
-        </div>
-      </form>
 
       <!-- Footer -->
       <div class="mt-8 text-center text-xs text-gray-500">
         © 2026 Código de Red. Acceso exclusivo autorizado.
       </div>
 
-      <!-- Dev Info -->
-      <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
-        <p class="font-semibold mb-1">👤 Credenciales de prueba:</p>
-        <p class="font-mono">admin@tenant-demo.com / Admin123!</p>
-      </div>
     </div>
   </div>
 </div>

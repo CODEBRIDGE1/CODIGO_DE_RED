@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+.venv/
+venv/
+env/
+ENV/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/dist/
+frontend/build/
+node_modules/
+.npm
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Docker
+docker-compose.override.yml
+
+# IDEs / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Alembic (local SQLite)
+*.db
+
+# Coverage
+.coverage
+htmlcov/
+
+# pytest
+.pytest_cache/

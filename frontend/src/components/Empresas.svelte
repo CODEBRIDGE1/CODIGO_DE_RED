@@ -56,6 +56,11 @@
   let uploadingDocument = $state(false);
   let uploadProgress = $state(0);
   let showViewerModal = $state(false);
+
+  // Estado para eliminar empresa
+  let showDeleteModal = $state(false);
+  let companyToDelete = $state<Company | null>(null);
+  let deletingCompany = $state(false);
   let currentDocumentUrl = $state('');
   let currentDocumentName = $state('');
   let currentDocumentType = $state('');
@@ -63,7 +68,8 @@
   // Filtros
   let searchTerm = $state('');
   let filterTipo = $state<string | null>(null);
-  
+  let filterActive = $state<boolean>(true); // true = activas, false = inactivas
+
   // Paginación
   let currentPage = $state(1);
   let totalCompanies = $state(0);
@@ -121,15 +127,10 @@
     }
     
     try {
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        page_size: pageSize.toString()
-      });
-      
-      if (searchTerm) params.append('search', searchTerm);
-      if (filterTipo) params.append('tipo_suministro', filterTipo);
+      // Carga todas las empresas para filtrado client-side en tiempo real
+      const params = new URLSearchParams({ page: '1', page_size: '500' });
 
-      const response = await fetch(`/api/v1/companies/?${params}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/?${params}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
@@ -158,6 +159,7 @@
     validationErrors = {};
     selectedCompany = null;
     showElectricalData = false;
+    modalTab = 'general';
     formData = {
       razon_social: '',
       nombre_comercial: '',
@@ -187,6 +189,61 @@
     setTimeout(() => firstModalInput?.focus(), 100);
   }
 
+  function confirmDeleteCompany(company: Company) {
+    companyToDelete = company;
+    showDeleteModal = true;
+  }
+
+  async function deleteCompany() {
+    if (!companyToDelete) return;
+    deletingCompany = true;
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/${companyToDelete.id}/`,
+        { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      if (response.ok || response.status === 204) {
+        showDeleteModal = false;
+        companyToDelete = null;
+        successMessage = `"${companyToDelete.razon_social}" desactivada correctamente`;
+        setTimeout(() => successMessage = '', 3000);
+        await loadCompanies();
+      } else {
+        const data = await response.json().catch(() => ({}));
+        errorMessage = data.detail || 'Error al eliminar la empresa';
+      }
+    } catch (err: any) {
+      errorMessage = err.message || 'Error al eliminar la empresa';
+    } finally {
+      deletingCompany = false;
+    }
+  }
+
+  async function reactivateCompany(company: Company) {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/${company.id}/`,
+        {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: true })
+        }
+      );
+      if (response.ok) {
+        successMessage = `"${company.razon_social}" reactivada correctamente`;
+        setTimeout(() => successMessage = '', 3000);
+        await loadCompanies();
+      } else {
+        const data = await response.json().catch(() => ({}));
+        errorMessage = data.detail || 'Error al reactivar la empresa';
+      }
+    } catch (err: any) {
+      errorMessage = err.message || 'Error al reactivar la empresa';
+    }
+  }
+
   function openEditModal(company: Company) {
     modalMode = 'edit';    validationErrors = {};    selectedCompany = company;
     // Cargar todos los datos de la empresa
@@ -195,7 +252,7 @@
 
   async function loadCompanyDetails(id: number) {
     try {
-      const response = await fetch(`/api/v1/companies/${id}/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/${id}/`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
@@ -205,6 +262,7 @@
 
       const company = await response.json();
       formData = { ...company };
+      modalTab = 'general';
       showModal = true;
     } catch (err: any) {
       errorMessage = err.message;
@@ -217,8 +275,8 @@
 
     try {
       const url = modalMode === 'create' 
-        ? `/api/v1/companies`
-        : `/api/v1/companies/${selectedCompany?.id}`;
+        ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/companies`
+        : `${import.meta.env.VITE_API_BASE_URL}/api/v1/companies/${selectedCompany?.id}`;
       
       const method = modalMode === 'create' ? 'POST' : 'PUT';
 
@@ -315,10 +373,8 @@
     }
   }
 
-  function handleSearch() {
-    currentPage = 1;
-    loadCompanies();
-  }
+  // Filtrado en tiempo real via $derived — handleSearch ya no es necesario
+  function handleSearch() { /* no-op: filtrado client-side */ }
 
   function handlePageChange(newPage: number) {
     currentPage = newPage;
@@ -336,7 +392,7 @@
     const token = localStorage.getItem('access_token');
 
     try {
-      const response = await fetch(`/api/v1/companies/${companyId}/documents/`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${companyId}/documents/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -383,7 +439,7 @@
         }
       }, 200);
 
-      const response = await fetch(`/api/v1/companies/${selectedCompanyForDocs.id}/upload`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${selectedCompanyForDocs.id}/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -424,7 +480,7 @@
     const token = localStorage.getItem('access_token');
 
     try {
-      const response = await fetch(`/api/v1/companies/${selectedCompanyForDocs.id}/documents/${documentId}/download`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${selectedCompanyForDocs.id}/documents/${documentId}/download`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -448,7 +504,7 @@
     const token = localStorage.getItem('access_token');
 
     try {
-      const response = await fetch(`/api/v1/companies/${selectedCompanyForDocs.id}/documents/${documentId}/download`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${selectedCompanyForDocs.id}/documents/${documentId}/download`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -469,7 +525,7 @@
     const token = localStorage.getItem('access_token');
 
     try {
-      const response = await fetch(`/api/v1/companies/${selectedCompanyForDocs.id}/documents/${documentId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/documents/${selectedCompanyForDocs.id}/documents/${documentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -500,7 +556,42 @@
     return 'text-red-600';
   }
 
-  const totalPages = $derived(Math.ceil(totalCompanies / pageSize));
+  // Normaliza texto eliminando acentos para búsqueda insensible
+  function normalizeStr(s: string): string {
+    return (s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+
+  // Pestaña activa del modal
+  let modalTab = $state<'general' | 'contacto' | 'electrico'>('general');
+
+  // Filtrado client-side (tiempo real + insensible a acentos)
+  const filteredCompanies = $derived.by(() => {
+    const term = normalizeStr(searchTerm);
+    return companies.filter(c => {
+      const matchesSearch = !term ||
+        normalizeStr(c.razon_social).includes(term) ||
+        normalizeStr(c.rfc).includes(term) ||
+        normalizeStr(c.rpu ?? '').includes(term) ||
+        normalizeStr(c.nombre_comercial ?? '').includes(term);
+      const matchesTipo = !filterTipo || c.tipo_suministro === filterTipo;
+      const matchesActive = c.is_active === filterActive;
+      return matchesSearch && matchesTipo && matchesActive;
+    });
+  });
+
+  const totalActivas = $derived(companies.filter(c => c.is_active).length);
+  const totalInactivas = $derived(companies.filter(c => !c.is_active).length);
+  const totalFiltered = $derived(filteredCompanies.length);
+  const totalPages = $derived(Math.ceil(totalFiltered / pageSize));
+  const pagedCompanies = $derived(
+    filteredCompanies.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  );
+
+  // Resetear página al cambiar filtros
+  $effect(() => {
+    searchTerm; filterTipo; filterActive;
+    currentPage = 1;
+  });
 
   // Referencias para focus
   let searchInput: HTMLInputElement;
@@ -623,35 +714,58 @@
     </div>
   {/if}
 
+  <!-- Tabs activas / inactivas -->
+  <div class="flex gap-1 mb-4 bg-white rounded-lg shadow p-1 w-fit">
+    <button
+      onclick={() => filterActive = true}
+      class="px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2
+        {filterActive ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}"
+    >
+      <span class="w-2 h-2 rounded-full {filterActive ? 'bg-blue-200' : 'bg-green-400'}"></span>
+      Activas
+      <span class="{filterActive ? 'bg-blue-500 text-blue-100' : 'bg-gray-100 text-gray-600'} text-xs px-1.5 py-0.5 rounded-full font-semibold">{totalActivas}</span>
+    </button>
+    <button
+      onclick={() => filterActive = false}
+      class="px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2
+        {!filterActive ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}"
+    >
+      <span class="w-2 h-2 rounded-full {!filterActive ? 'bg-gray-400' : 'bg-gray-300'}"></span>
+      Inactivas
+      <span class="{!filterActive ? 'bg-gray-600 text-gray-200' : 'bg-gray-100 text-gray-600'} text-xs px-1.5 py-0.5 rounded-full font-semibold">{totalInactivas}</span>
+    </button>
+  </div>
+
   <!-- Search and Filters -->
   <div class="bg-white rounded-lg shadow p-4 mb-6">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div class="md:col-span-2">
         <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
-        <div class="flex space-x-2">
+        <div class="relative">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+          </svg>
           <input
             bind:this={searchInput}
             type="text"
             bind:value={searchTerm}
-            placeholder="Razón social, RFC, RPU..."
-            onkeypress={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder="Razón social, RFC"
             tabindex="1"
-            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
-          <button
-            onclick={handleSearch}
-            tabindex="3"
-            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            Buscar
-          </button>
+          {#if searchTerm}
+            <button onclick={() => searchTerm = ''} class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          {/if}
         </div>
       </div>
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Suministro</label>
         <select
           bind:value={filterTipo}
-          onchange={handleSearch}
           tabindex="2"
           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
@@ -674,7 +788,7 @@
         {/each}
       </div>
     </div>
-  {:else if companies.length === 0}
+  {:else if filteredCompanies.length === 0 && companies.length === 0}
     <!-- Empty State -->
     <div class="bg-white rounded-lg shadow p-12 text-center">
       <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -689,9 +803,19 @@
         Registrar Empresa
       </button>
     </div>
+  {:else if filteredCompanies.length === 0}
+    <!-- No results from filter -->
+    <div class="bg-white rounded-lg shadow p-10 text-center">
+      <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"/>
+      </svg>
+      <p class="text-gray-500">Sin resultados para <strong>"{searchTerm}"</strong></p>
+      <button onclick={() => { searchTerm = ''; filterTipo = null; }} class="mt-3 text-sm text-blue-600 hover:underline">Limpiar filtros</button>
+    </div>
   {:else}
     <!-- Table - Desktop -->
     <div class="hidden md:block bg-white rounded-lg shadow overflow-hidden">
+      <div class="overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
@@ -701,12 +825,12 @@
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Demanda (kW)</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clasificación</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+            <th class="sticky right-0 z-10 bg-gray-50 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.08)]">Acciones</th>
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-          {#each companies as company}
-            <tr class="hover:bg-gray-50 transition-colors">
+          {#each pagedCompanies as company}
+            <tr class="group hover:bg-gray-50 transition-colors">
               <td class="px-6 py-4">
                 <div class="text-sm font-medium text-gray-900">{company.razon_social}</div>
                 {#if company.nombre_comercial}
@@ -730,7 +854,7 @@
                   </span>
                 {/if}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm">
+              <td class="sticky right-0 z-10 bg-white group-hover:bg-gray-50 px-6 py-4 whitespace-nowrap text-sm shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.08)] transition-colors">
                 <div class="flex space-x-2">
                   <button
                     onclick={() => openDocumentsModal(company)}
@@ -750,17 +874,39 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                   </button>
+                  {#if company.is_active}
+                    <button
+                      onclick={() => confirmDeleteCompany(company)}
+                      class="text-red-500 hover:text-red-700"
+                      title="Desactivar empresa"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                      </svg>
+                    </button>
+                  {:else}
+                    <button
+                      onclick={() => reactivateCompany(company)}
+                      class="text-green-600 hover:text-green-800"
+                      title="Reactivar empresa"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </button>
+                  {/if}
                 </div>
               </td>
             </tr>
           {/each}
         </tbody>
       </table>
+      </div>
     </div>
 
     <!-- Cards - Mobile -->
     <div class="md:hidden space-y-4">
-      {#each companies as company}
+      {#each pagedCompanies as company}
         <div class="bg-white rounded-lg shadow p-4">
           <div class="flex justify-between items-start mb-3">
             <div class="flex-1 min-w-0">
@@ -816,6 +962,29 @@
               </svg>
               <span>Editar</span>
             </button>
+            {#if company.is_active}
+              <button
+                onclick={() => confirmDeleteCompany(company)}
+                class="flex items-center justify-center gap-1 px-3 py-2 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                title="Desactivar empresa"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 115.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+                <span>Desactivar</span>
+              </button>
+            {:else}
+              <button
+                onclick={() => reactivateCompany(company)}
+                class="flex items-center justify-center gap-1 px-3 py-2 text-sm text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                title="Reactivar empresa"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Reactivar</span>
+              </button>
+            {/if}
           </div>
         </div>
       {/each}
@@ -824,7 +993,11 @@
     <!-- Pagination -->
     <div class="mt-4 flex flex-col sm:flex-row justify-between items-center gap-4">
       <div class="text-sm text-gray-600">
-        Mostrando {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCompanies)} de {totalCompanies} empresas
+        {#if searchTerm || filterTipo}
+          <span>{totalFiltered} resultado{totalFiltered !== 1 ? 's' : ''} de {totalCompanies} empresas</span>
+        {:else}
+          Mostrando {Math.min((currentPage - 1) * pageSize + 1, totalFiltered)}-{Math.min(currentPage * pageSize, totalFiltered)} de {totalFiltered} empresas
+        {/if}
       </div>
       <div class="flex space-x-2">
         <button
@@ -849,6 +1022,58 @@
   {/if}
 </div>
 
+<!-- Modal confirmar eliminación -->
+{#if showDeleteModal && companyToDelete}
+  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+      <div class="flex items-start gap-4 mb-5">
+        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+          <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 115.636 5.636m12.728 12.728L5.636 5.636"/>
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900">Desactivar empresa</h3>
+          <p class="text-sm text-gray-600 mt-1">
+            ¿Desactivar
+            <strong class="text-gray-900">{companyToDelete.razon_social}</strong>?
+          </p>
+          <p class="text-xs text-gray-500 mt-2">La empresa pasará a la pestaña de Inactivas y podrás reactivarla en cualquier momento.</p>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3">
+        <button
+          type="button"
+          onclick={() => { showDeleteModal = false; companyToDelete = null; }}
+          disabled={deletingCompany}
+          class="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onclick={deleteCompany}
+          disabled={deletingCompany}
+          class="px-4 py-2 text-sm bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+        >
+          {#if deletingCompany}
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+            </svg>
+            Desactivando...
+          {:else}
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 115.636 5.636m12.728 12.728L5.636 5.636"/>
+            </svg>
+            Desactivar empresa
+          {/if}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <!-- Modal de formulario completo -->
 {#if showModal}
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -868,15 +1093,29 @@
           </button>
         </div>
 
-        <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }} class="space-y-6">
-          <!-- DATOS GENERALES -->
-          <div class="border-b pb-4">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Datos Generales</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
+        <!-- Tab nav -->
+        <div class="flex border-b border-gray-200 mb-5 -mx-1">
+          {#each [['general','General'],['contacto','Contacto'],['electrico','Eléctrico']] as [tab, label]}
+            <button
+              type="button"
+              onclick={() => modalTab = tab}
+              class="px-5 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
+                {modalTab === tab
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+            >{label}</button>
+          {/each}
+        </div>
+
+        <form onsubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
+
+          <!-- ── TAB: GENERAL ── -->
+          {#if modalTab === 'general'}
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
                   Razón Social <span class="text-red-500">*</span>
-                  <span class="text-xs text-gray-500">(Mínimo 3 caracteres)</span>
+                  <span class="text-xs text-gray-400 ml-1">(mín. 3 caracteres)</span>
                 </label>
                 <input
                   bind:this={firstModalInput}
@@ -889,13 +1128,13 @@
                   class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 {validationErrors['razon_social'] ? 'border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}"
                 />
                 {#if validationErrors['razon_social']}
-                  <p class="text-red-600 text-sm mt-1">{validationErrors['razon_social']}</p>
+                  <p class="text-red-600 text-xs mt-1">{validationErrors['razon_social']}</p>
                 {/if}
               </div>
-              <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
                   Nombre Comercial
-                  <span class="text-xs text-gray-500">(Opcional)</span>
+                  <span class="text-xs text-gray-400 ml-1">(opcional)</span>
                 </label>
                 <input
                   type="text"
@@ -906,9 +1145,9 @@
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
                   RFC <span class="text-red-500">*</span>
-                  <span class="text-xs text-gray-500">(12-13 caracteres)</span>
+                  <span class="text-xs text-gray-400 ml-1">(12-13 caracteres)</span>
                 </label>
                 <input
                   type="text"
@@ -921,32 +1160,51 @@
                   class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 uppercase {validationErrors['rfc'] ? 'border-red-500 bg-red-50' : 'border-gray-300 focus:border-blue-500'}"
                 />
                 {#if validationErrors['rfc']}
-                  <p class="text-red-600 text-sm mt-1">{validationErrors['rfc']}</p>
+                  <p class="text-red-600 text-xs mt-1">{validationErrors['rfc']}</p>
                 {/if}
               </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Notas Adicionales</label>
+                <textarea
+                  bind:value={formData.notas}
+                  rows="3"
+                  placeholder="Observaciones generales..."
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                ></textarea>
+              </div>
+              <div class="flex items-center pt-1">
+                <input
+                  type="checkbox"
+                  id="company_active"
+                  bind:checked={formData.is_active}
+                  class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label for="company_active" class="ml-2 text-sm text-gray-700">
+                  Empresa activa
+                </label>
+              </div>
             </div>
-          </div>
+          {/if}
 
-          <!-- DATOS DE CONTACTO -->
-          <div class="border-b pb-4">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Datos de Contacto</h3>
+          <!-- ── TAB: CONTACTO ── -->
+          {#if modalTab === 'contacto'}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
                   Teléfono
-                  <span class="text-xs text-gray-500">(10 dígitos)</span>
+                  <span class="text-xs text-gray-400 ml-1">(opcional)</span>
                 </label>
                 <input
-                  type="tel"
+                  type="text"
+                  inputmode="tel"
                   bind:value={formData.telefono}
-                  pattern="[0-9]{10}"
-                  maxlength="10"
-                  placeholder="5512345678"
+                  maxlength="20"
+                  placeholder="55 1234 5678"
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
                   bind:value={formData.email}
@@ -955,7 +1213,7 @@
                 />
               </div>
               <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
                 <textarea
                   bind:value={formData.direccion}
                   rows="2"
@@ -965,7 +1223,7 @@
                 ></textarea>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Ciudad</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
                 <input
                   type="text"
                   bind:value={formData.ciudad}
@@ -975,7 +1233,7 @@
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
                 <input
                   type="text"
                   bind:value={formData.estado}
@@ -985,227 +1243,208 @@
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">
                   Código Postal
-                  <span class="text-xs text-gray-500">(5 dígitos)</span>
+                  <span class="text-xs text-gray-400 ml-1">(opcional)</span>
                 </label>
                 <input
                   type="text"
+                  inputmode="numeric"
                   bind:value={formData.codigo_postal}
-                  pattern="[0-9]{5}"
-                  maxlength="5"
+                  maxlength="10"
                   placeholder="64000"
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
-          </div>
+          {/if}
 
-          <!-- DATOS ELÉCTRICOS -->
-          <div class="border-b pb-4">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold text-gray-900">Datos Eléctricos</h3>
+          <!-- ── TAB: ELÉCTRICO ── -->
+          {#if modalTab === 'electrico'}
+            <div class="space-y-5">
+              <!-- Toggle eléctrico -->
+              <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span class="text-sm font-medium text-gray-700">¿Incluir datos eléctricos?</span>
+                <button
+                  type="button"
+                  onclick={() => showElectricalData = !showElectricalData}
+                  class="px-4 py-1.5 text-sm font-medium rounded-lg transition-colors {showElectricalData ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
+                >
+                  {showElectricalData ? '✓ Activo' : 'Activar'}
+                </button>
+              </div>
+
+              {#if showElectricalData}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-blue-50 p-4 rounded-lg">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      RPU
+                      <span class="text-xs text-gray-400 ml-1">(5-50 caracteres)</span>
+                    </label>
+                    <input
+                      type="text"
+                      bind:value={formData.rpu}
+                      minlength="5"
+                      maxlength="50"
+                      placeholder="Ej: 1234567890"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Suministro</label>
+                    <select
+                      bind:value={formData.tipo_suministro}
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="GDMTH">GDMTH - Gran Demanda MT Horaria</option>
+                      <option value="GDMTO">GDMTO - Gran Demanda MT Ordinaria</option>
+                      <option value="GDBT">GDBT - Gran Demanda BT</option>
+                      <option value="DIST">DIST - Distribución</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Tensión de Suministro
+                      <span class="text-xs text-gray-400 ml-1">(Ej: 13.2 kV)</span>
+                    </label>
+                    <input
+                      type="text"
+                      bind:value={formData.tension_suministro}
+                      maxlength="50"
+                      placeholder="13.2 kV"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Demanda Contratada (kW)</label>
+                    <input
+                      type="number"
+                      bind:value={formData.demanda_contratada_kw}
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Demanda Máxima (kW)</label>
+                    <input
+                      type="number"
+                      bind:value={formData.demanda_maxima_kw}
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Factor de Carga
+                      <span class="text-xs text-gray-400 ml-1">(0–1)</span>
+                    </label>
+                    <input
+                      type="number"
+                      bind:value={formData.factor_carga}
+                      step="0.01"
+                      min="0"
+                      max="1"
+                      placeholder="0.00"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
+                      Factor de Potencia
+                      <span class="text-xs text-gray-400 ml-1">(0–1)</span>
+                    </label>
+                    <input
+                      type="number"
+                      bind:value={formData.factor_potencia}
+                      step="0.01"
+                      min="0"
+                      max="1"
+                      placeholder="0.00"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Consumo Mensual (kWh)</label>
+                    <input
+                      type="number"
+                      bind:value={formData.consumo_mensual_kwh}
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Costo Mensual Aprox. ($)</label>
+                    <input
+                      type="number"
+                      bind:value={formData.costo_mensual_aproximado}
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                </div>
+              {/if}
+
+              <!-- Centro de carga (siempre visible en tab eléctrico) -->
+              <div class="grid grid-cols-1 gap-4 pt-2">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Centro de Carga</label>
+                  <input
+                    type="text"
+                    bind:value={formData.nombre_centro_carga}
+                    maxlength="200"
+                    placeholder="Ej: Planta Principal"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Ubicación del Centro de Carga</label>
+                  <textarea
+                    bind:value={formData.ubicacion_centro_carga}
+                    rows="2"
+                    placeholder="Dirección o descripción del centro de carga..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+          {/if}
+
+          <!-- Buttons — always visible -->
+          <div class="flex justify-between items-center pt-5 mt-5 border-t">
+            <div class="flex gap-1">
+              {#each [['general','General'],['contacto','Contacto'],['electrico','Eléctrico']] as [tab, label], i}
+                <button
+                  type="button"
+                  onclick={() => modalTab = tab}
+                  class="w-2 h-2 rounded-full transition-colors {modalTab === tab ? 'bg-blue-600' : 'bg-gray-300 hover:bg-gray-400'}"
+                  title={label}
+                ></button>
+              {/each}
+            </div>
+            <div class="flex space-x-3">
               <button
                 type="button"
-                onclick={() => showElectricalData = !showElectricalData}
-                class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {showElectricalData ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}"
+                onclick={() => showModal = false}
+                class="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
               >
-                {showElectricalData ? 'Activo' : 'Agregar Datos Eléctricos'}
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                {modalMode === 'create' ? 'Registrar Empresa' : 'Guardar Cambios'}
               </button>
             </div>
-
-            {#if showElectricalData}
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-blue-50 p-4 rounded-lg">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  RPU
-                  <span class="text-xs text-gray-500">(Registro de Usuario, 5-50 caracteres)</span>
-                </label>
-                <input
-                  type="text"
-                  bind:value={formData.rpu}
-                  minlength="5"
-                  maxlength="50"
-                  placeholder="Ej: 1234567890"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Tipo de Suministro
-                </label>
-                <select
-                  bind:value={formData.tipo_suministro}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                >
-                  <option value="">Seleccionar...</option>
-                  <option value="GDMTH">GDMTH - Gran Demanda MT Horaria</option>
-                  <option value="GDMTO">GDMTO - Gran Demanda MT Ordinaria</option>
-                  <option value="GDBT">GDBT - Gran Demanda BT</option>
-                  <option value="DIST">DIST - Distribución</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Tensión de Suministro
-                  <span class="text-xs text-gray-500">(Ej: 13.2 kV)</span>
-                </label>
-                <input
-                  type="text"
-                  bind:value={formData.tension_suministro}
-                  maxlength="50"
-                  placeholder="13.2 kV"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Demanda Contratada (kW)
-                  <span class="text-xs text-gray-500">(Solo números positivos)</span>
-                </label>
-                <input
-                  type="number"
-                  bind:value={formData.demanda_contratada_kw}
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Demanda Máxima (kW)
-                </label>
-                <input
-                  type="number"
-                  bind:value={formData.demanda_maxima_kw}
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Factor de Carga
-                  <span class="text-xs text-gray-500">(Entre 0 y 1)</span>
-                </label>
-                <input
-                  type="number"
-                  bind:value={formData.factor_carga}
-                  step="0.01"
-                  min="0"
-                  max="1"
-                  placeholder="0.00"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Factor de Potencia
-                  <span class="text-xs text-gray-500">(Entre 0 y 1)</span>
-                </label>
-                <input
-                  type="number"
-                  bind:value={formData.factor_potencia}
-                  step="0.01"
-                  min="0"
-                  max="1"
-                  placeholder="0.00"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Consumo Mensual (kWh)
-                </label>
-                <input
-                  type="number"
-                  bind:value={formData.consumo_mensual_kwh}
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Costo Mensual Aproximado ($)
-                </label>
-                <input
-                  type="number"
-                  bind:value={formData.costo_mensual_aproximado}
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                />
-              </div>
-            </div>
-            {/if}
-          </div>
-
-          <!-- CENTRO DE CARGA -->
-          <div class="border-b pb-4">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Centro de Carga</h3>
-            <div class="grid grid-cols-1 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Nombre del Centro de Carga</label>
-                <input
-                  type="text"
-                  bind:value={formData.nombre_centro_carga}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Ubicación del Centro de Carga</label>
-                <textarea
-                  bind:value={formData.ubicacion_centro_carga}
-                  rows="2"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                ></textarea>
-              </div>
-            </div>
-          </div>
-
-          <!-- NOTAS -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Notas Adicionales</label>
-            <textarea
-              bind:value={formData.notas}
-              rows="3"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            ></textarea>
-          </div>
-
-          <!-- Activo -->
-          <div class="flex items-center">
-            <input
-              type="checkbox"
-              id="company_active"
-              bind:checked={formData.is_active}
-              class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label for="company_active" class="ml-2 block text-sm text-gray-700">
-              Empresa activa
-            </label>
-          </div>
-
-          <!-- Buttons -->
-          <div class="flex justify-end space-x-3 pt-4 border-t">
-            <button
-              type="button"
-              onclick={() => showModal = false}
-              class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-            >
-              {modalMode === 'create' ? 'Registrar Empresa' : 'Guardar Cambios'}
-            </button>
           </div>
         </form>
       </div>

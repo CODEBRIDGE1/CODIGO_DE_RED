@@ -23,18 +23,55 @@ from app.schemas.compliance import (
     CompanyClassificationUpdate,
     CompanyClassificationResponse,
     ComplianceRequirementResponse,
+    ComplianceRequirementCreate,
+    ComplianceRequirementUpdate,
     ComplianceRuleResponse,
+    ComplianceRuleCreate,
+    ComplianceRuleUpdate,
     ComplianceMatrixResponse,
     ComplianceMatrixItem,
     ComplianceAuditLogResponse,
     TipoCentroCargaEnum,
     EstadoAplicabilidadEnum
 )
+from app.schemas.company import CompanySlimResponse
+from typing import List as TypingList
 
 router = APIRouter()
 
 
 # === ENDPOINTS FOR TENANTS ===
+
+@router.get("/companies/", response_model=TypingList[CompanySlimResponse])
+async def list_companies_slim(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Lista slim de empresas del tenant con su clasificación (si existe).
+    Solo devuelve los campos necesarios para la Matriz de Obligaciones:
+    id, razon_social, rfc, is_active, tipo_centro_carga, justificacion.
+    """
+    result = await db.execute(
+        select(Company, CompanyClassification)
+        .outerjoin(CompanyClassification, CompanyClassification.company_id == Company.id)
+        .where(Company.tenant_id == current_user.tenant_id)
+        .order_by(Company.razon_social.asc())
+    )
+    rows = result.all()
+
+    items = []
+    for company, classification in rows:
+        items.append(CompanySlimResponse(
+            id=company.id,
+            razon_social=company.razon_social,
+            rfc=company.rfc,
+            is_active=company.is_active,
+            tipo_centro_carga=classification.tipo_centro_carga.value if classification and classification.tipo_centro_carga else None,
+            justificacion=classification.justificacion if classification else None,
+        ))
+    return items
+
 
 @router.post("/companies/{company_id}/classification", response_model=CompanyClassificationResponse)
 async def create_company_classification(
@@ -324,6 +361,8 @@ async def get_all_requirements(
             parent_id=req.parent_id,
             orden=req.orden,
             is_active=req.is_active,
+            created_at=req.created_at,
+            updated_at=req.updated_at,
             children=children
         )
     
@@ -366,3 +405,218 @@ async def get_audit_log(
     logs = result.scalars().all()
     
     return logs
+
+
+# === ADMIN CRUD ENDPOINTS FOR REQUIREMENTS ===
+
+@router.post("/admin/requirements", response_model=ComplianceRequirementResponse, status_code=status.HTTP_201_CREATED)
+async def create_requirement(
+    requirement: ComplianceRequirementCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Crear nuevo requerimiento de compliance (solo admin)"""
+    if not current_user.is_superadmin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Validar que el parent existe si se especifica
+    if requirement.parent_id:
+        result = await db.execute(
+            select(ComplianceRequirement).where(ComplianceRequirement.id == requirement.parent_id)
+        )
+        parent = result.scalars().first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent requirement not found")
+    
+    # Crear requerimiento
+    db_requirement = ComplianceRequirement(**requirement.model_dump())
+    db.add(db_requirement)
+    await db.commit()
+    await db.refresh(db_requirement)
+    
+    # Cargar children vacío
+    db_requirement.children = []
+    
+    return db_requirement
+
+
+@router.put("/admin/requirements/{requirement_id}", response_model=ComplianceRequirementResponse)
+async def update_requirement(
+    requirement_id: int,
+    requirement: ComplianceRequirementUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Actualizar requerimiento existente (solo admin)"""
+    if not current_user.is_superadmin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Obtener requerimiento
+    result = await db.execute(
+        select(ComplianceRequirement).where(ComplianceRequirement.id == requirement_id)
+    )
+    db_requirement = result.scalars().first()
+    if not db_requirement:
+        raise HTTPException(status_code=404, detail="Requirement not found")
+    
+    # Validar parent si se especifica
+    if requirement.parent_id is not None:
+        if requirement.parent_id == requirement_id:
+            raise HTTPException(status_code=400, detail="Requirement cannot be its own parent")
+        result = await db.execute(
+            select(ComplianceRequirement).where(ComplianceRequirement.id == requirement.parent_id)
+        )
+        parent = result.scalars().first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent requirement not found")
+    
+    # Actualizar campos
+    update_data = requirement.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_requirement, field, value)
+    
+    await db.commit()
+    await db.refresh(db_requirement)
+    
+    # Cargar children
+    result = await db.execute(
+        select(ComplianceRequirement).where(ComplianceRequirement.parent_id == db_requirement.id)
+    )
+    db_requirement.children = result.scalars().all()
+    
+    return db_requirement
+
+
+@router.delete("/admin/requirements/{requirement_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_requirement(
+    requirement_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Eliminar requerimiento (solo admin)"""
+    if not current_user.is_superadmin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Obtener requerimiento
+    result = await db.execute(
+        select(ComplianceRequirement).where(ComplianceRequirement.id == requirement_id)
+    )
+    db_requirement = result.scalars().first()
+    if not db_requirement:
+        raise HTTPException(status_code=404, detail="Requirement not found")
+    
+    # Verificar que no tenga hijos
+    result = await db.execute(
+        select(ComplianceRequirement).where(ComplianceRequirement.parent_id == requirement_id)
+    )
+    children = result.scalars().all()
+    if children:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete requirement with children. Delete children first."
+        )
+    
+    # Eliminar reglas asociadas
+    await db.execute(
+        select(ComplianceRule).where(ComplianceRule.requirement_id == requirement_id)
+    )
+    
+    await db.delete(db_requirement)
+    await db.commit()
+
+
+# === ADMIN CRUD ENDPOINTS FOR RULES ===
+
+@router.post("/admin/rules", response_model=ComplianceRuleResponse, status_code=status.HTTP_201_CREATED)
+async def create_rule(
+    rule: ComplianceRuleCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Crear nueva regla de aplicabilidad (solo admin)"""
+    if not current_user.is_superadmin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Validar que el requirement existe
+    result = await db.execute(
+        select(ComplianceRequirement).where(ComplianceRequirement.id == rule.requirement_id)
+    )
+    requirement = result.scalars().first()
+    if not requirement:
+        raise HTTPException(status_code=404, detail="Requirement not found")
+    
+    # Verificar que no exista ya una regla para este requirement + tipo
+    result = await db.execute(
+        select(ComplianceRule).where(
+            and_(
+                ComplianceRule.requirement_id == rule.requirement_id,
+                cast(ComplianceRule.tipo_centro_carga, String) == rule.tipo_centro_carga.value
+            )
+        )
+    )
+    existing = result.scalars().first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail="Rule already exists for this requirement and tipo_centro_carga"
+        )
+    
+    # Crear regla
+    db_rule = ComplianceRule(**rule.model_dump())
+    db.add(db_rule)
+    await db.commit()
+    await db.refresh(db_rule)
+    
+    return db_rule
+
+
+@router.put("/admin/rules/{rule_id}", response_model=ComplianceRuleResponse)
+async def update_rule(
+    rule_id: int,
+    rule: ComplianceRuleUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Actualizar regla existente (solo admin)"""
+    if not current_user.is_superadmin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Obtener regla
+    result = await db.execute(
+        select(ComplianceRule).where(ComplianceRule.id == rule_id)
+    )
+    db_rule = result.scalars().first()
+    if not db_rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    
+    # Actualizar campos
+    update_data = rule.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_rule, field, value)
+    
+    await db.commit()
+    await db.refresh(db_rule)
+    
+    return db_rule
+
+
+@router.delete("/admin/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_rule(
+    rule_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Eliminar regla (solo admin)"""
+    if not current_user.is_superadmin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Obtener regla
+    result = await db.execute(
+        select(ComplianceRule).where(ComplianceRule.id == rule_id)
+    )
+    db_rule = result.scalars().first()
+    if not db_rule:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    
+    await db.delete(db_rule)
+    await db.commit()

@@ -31,6 +31,9 @@ class UserProfile(BaseModel):
     tenant_name: str | None
     roles: list[str] = []
     permissions: dict[str, list[str]] = {}  # {module: [actions]}
+    security_modules: list[str] = []  # module keys from the user's security level
+    security_level_id: int | None = None
+    security_level_name: str | None = None
 
     class Config:
         from_attributes = True

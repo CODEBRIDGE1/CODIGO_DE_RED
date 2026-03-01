@@ -20,35 +20,35 @@ router = APIRouter()
 # Schemas
 class TenantCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
-    slug: str = Field(..., min_length=1, max_length=100)
-    contact_email: EmailStr
-    contact_phone: Optional[str] = None
+    subdomain: str = Field(..., min_length=1, max_length=100)
+    contact_name: Optional[str] = Field(None, max_length=200)
+    contact_email: Optional[EmailStr] = None
+    contact_phone: Optional[str] = Field(None, max_length=50)
     address: Optional[str] = None
-    max_users: int = Field(default=10, ge=1)
-    max_companies: int = Field(default=50, ge=1)
-    is_active: bool = True
+    notes: Optional[str] = None
 
 
 class TenantUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=200)
+    subdomain: Optional[str] = Field(None, min_length=1, max_length=100)
+    contact_name: Optional[str] = Field(None, max_length=200)
     contact_email: Optional[EmailStr] = None
-    contact_phone: Optional[str] = None
+    contact_phone: Optional[str] = Field(None, max_length=50)
     address: Optional[str] = None
-    max_users: Optional[int] = Field(None, ge=1)
-    max_companies: Optional[int] = Field(None, ge=1)
-    is_active: Optional[bool] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
 
 
 class TenantResponse(BaseModel):
     id: int
     name: str
-    slug: str
-    contact_email: str
-    contact_phone: Optional[str]
-    address: Optional[str]
-    max_users: int
-    max_companies: int
-    is_active: bool
+    subdomain: str
+    status: str
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     
@@ -61,7 +61,7 @@ class TenantResponse(BaseModel):
         from_attributes = True
 
 
-@router.post("/tenants", response_model=TenantResponse, status_code=201)
+@router.post("/", response_model=TenantResponse, status_code=201)
 async def create_tenant(
     tenant_data: TenantCreate,
     current_user: User = Depends(get_current_superadmin),
@@ -69,27 +69,16 @@ async def create_tenant(
 ):
     """Crear nuevo tenant/cliente (solo superadmin)"""
     
-    # Verificar que el slug no exista
+    # Verificar que el subdomain no exista
     result = await db.execute(
-        select(Tenant).where(Tenant.slug == tenant_data.slug)
+        select(Tenant).where(Tenant.subdomain == tenant_data.subdomain)
     )
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Slug already exists")
+        raise HTTPException(status_code=400, detail="Subdomain already exists")
     
     # Crear tenant
     db_tenant = Tenant(**tenant_data.model_dump())
     db.add(db_tenant)
-    await db.flush()
-    
-    # Crear licencia por defecto
-    license = License(
-        tenant_id=db_tenant.id,
-        plan_name="Basic",
-        max_users=tenant_data.max_users,
-        max_companies=tenant_data.max_companies,
-        is_active=True
-    )
-    db.add(license)
     
     await db.commit()
     await db.refresh(db_tenant)
@@ -98,12 +87,12 @@ async def create_tenant(
     return response
 
 
-@router.get("/tenants")
+@router.get("/")
 async def list_tenants(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
     search: Optional[str] = None,
-    is_active: Optional[bool] = None,
+    status: Optional[str] = None,
     current_user: User = Depends(get_current_superadmin),
     db: AsyncSession = Depends(get_db)
 ):
@@ -118,13 +107,12 @@ async def list_tenants(
     if search:
         search_filter = or_(
             Tenant.name.ilike(f"%{search}%"),
-            Tenant.slug.ilike(f"%{search}%"),
-            Tenant.contact_email.ilike(f"%{search}%")
+            Tenant.subdomain.ilike(f"%{search}%")
         )
         filters.append(search_filter)
     
-    if is_active is not None:
-        filters.append(Tenant.is_active == is_active)
+    if status is not None:
+        filters.append(Tenant.status == status)
     
     if filters:
         query = query.where(and_(*filters))
@@ -179,7 +167,7 @@ async def list_tenants(
     }
 
 
-@router.get("/tenants/{tenant_id}", response_model=TenantResponse)
+@router.get("/{tenant_id}", response_model=TenantResponse)
 async def get_tenant(
     tenant_id: int,
     current_user: User = Depends(get_current_superadmin),
@@ -217,7 +205,7 @@ async def get_tenant(
     return response
 
 
-@router.put("/tenants/{tenant_id}", response_model=TenantResponse)
+@router.put("/{tenant_id}", response_model=TenantResponse)
 async def update_tenant(
     tenant_id: int,
     tenant_data: TenantUpdate,
@@ -245,7 +233,7 @@ async def update_tenant(
     return TenantResponse.model_validate(tenant)
 
 
-@router.delete("/tenants/{tenant_id}")
+@router.delete("/{tenant_id}")
 async def delete_tenant(
     tenant_id: int,
     current_user: User = Depends(get_current_superadmin),
@@ -262,7 +250,8 @@ async def delete_tenant(
         raise HTTPException(status_code=404, detail="Tenant not found")
     
     # Soft delete
-    tenant.is_active = False
+    from app.models.tenant import TenantStatus
+    tenant.status = TenantStatus.INACTIVE
     
     await db.commit()
     

@@ -10,6 +10,9 @@ export interface User {
   tenantId: number | null;
   isSuperadmin: boolean;
   permissions: string[];
+  securityModules: string[];       // module keys from the user's security level
+  securityLevelId: number | null;  // id del nivel de seguridad asignado
+  securityLevelName: string | null;// nombre del nivel de seguridad
 }
 
 interface AuthState {
@@ -62,7 +65,14 @@ function createAuthStore() {
       const userJson = localStorage.getItem('user');
       
       if (accessToken && refreshToken && userJson) {
-        const user = JSON.parse(userJson);
+        const stored = JSON.parse(userJson);
+        // Backfill fields that may be missing in older stored sessions
+        const user: User = {
+          securityModules: [],
+          securityLevelId: null,
+          securityLevelName: null,
+          ...stored
+        };
         set({
           user,
           accessToken,

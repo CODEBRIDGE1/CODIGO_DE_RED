@@ -33,8 +33,8 @@ class Company(Base):
     codigo_postal = Column(String(10))
     
     # Datos eléctricos
-    rpu = Column(String(50), nullable=False, unique=True, index=True)
-    tipo_suministro = Column(String(50), nullable=False)
+    rpu = Column(String(50), nullable=True, unique=True, index=True)
+    tipo_suministro = Column(String(50), nullable=True)
     tension_suministro = Column(String(50))
     
     # Demanda contratada

@@ -50,7 +50,7 @@ def calcular_clasificacion(company_data: dict) -> str:
 @router.get("/", response_model=CompanyListResponse)
 async def list_companies(
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100),
+    page_size: int = Query(10, ge=1, le=1000),
     search: Optional[str] = None,
     tipo_suministro: Optional[str] = None,
     is_active: Optional[bool] = None,
@@ -158,15 +158,16 @@ async def create_company(
             detail="El RFC ya está registrado"
         )
     
-    # Verificar si el RPU ya existe
-    result = await db.execute(
-        select(Company).where(Company.rpu == company_data.rpu)
-    )
-    if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El RPU ya está registrado"
+    # Verificar si el RPU ya existe (solo si se proporcionó)
+    if company_data.rpu:
+        result = await db.execute(
+            select(Company).where(Company.rpu == company_data.rpu)
         )
+        if result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El RPU ya está registrado"
+            )
     
     # Calcular clasificación automática
     clasificacion = calcular_clasificacion(company_data.model_dump())
@@ -217,6 +218,19 @@ async def update_company(
     update_data = company_data.model_dump(exclude_unset=True)
     
     # Verificar RFC único si se está cambiando
+    if 'rpu' in update_data and update_data['rpu'] and update_data['rpu'] != company.rpu:
+        result = await db.execute(
+            select(Company).where(
+                Company.rpu == update_data['rpu'],
+                Company.id != company_id
+            )
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El RPU ya está registrado por otra empresa"
+            )
+
     if 'rfc' in update_data and update_data['rfc'] != company.rfc:
         result = await db.execute(
             select(Company).where(
@@ -230,20 +244,6 @@ async def update_company(
                 detail="El RFC ya está registrado"
             )
         update_data['rfc'] = update_data['rfc'].upper()
-    
-    # Verificar RPU único si se está cambiando
-    if 'rpu' in update_data and update_data['rpu'] != company.rpu:
-        result = await db.execute(
-            select(Company).where(
-                Company.rpu == update_data['rpu'],
-                Company.id != company_id
-            )
-        )
-        if result.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El RPU ya está registrado"
-            )
     
     # Actualizar
     for field, value in update_data.items():

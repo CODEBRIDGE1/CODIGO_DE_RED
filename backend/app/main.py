@@ -15,7 +15,7 @@ import logging
 from app.core.config import settings
 from app.core.audit import AuditMiddleware
 from app.db.session import close_db
-from app.api.v1 import api_router
+from app.api.v1.router import api_router
 
 # Configure logging
 logging.basicConfig(

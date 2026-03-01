@@ -20,7 +20,7 @@ from app.schemas.quote_item import (
 router = APIRouter()
 
 
-@router.post("/quote-items", response_model=QuoteItemResponse, status_code=201)
+@router.post("/", response_model=QuoteItemResponse, status_code=201)
 async def create_quote_item(
     item_data: QuoteItemCreate,
     current_user: User = Depends(get_current_superadmin),
@@ -47,7 +47,7 @@ async def create_quote_item(
     return db_item
 
 
-@router.get("/quote-items", response_model=QuoteItemListResponse)
+@router.get("/", response_model=QuoteItemListResponse)
 async def list_quote_items(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
@@ -102,7 +102,7 @@ async def list_quote_items(
     }
 
 
-@router.get("/quote-items/{item_id}", response_model=QuoteItemResponse)
+@router.get("/{item_id}", response_model=QuoteItemResponse)
 async def get_quote_item(
     item_id: int,
     current_user: User = Depends(get_current_superadmin),
@@ -121,7 +121,7 @@ async def get_quote_item(
     return item
 
 
-@router.put("/quote-items/{item_id}", response_model=QuoteItemResponse)
+@router.put("/{item_id}", response_model=QuoteItemResponse)
 async def update_quote_item(
     item_id: int,
     item_data: QuoteItemUpdate,
@@ -160,7 +160,7 @@ async def update_quote_item(
     return item
 
 
-@router.delete("/quote-items/{item_id}")
+@router.delete("/{item_id}")
 async def delete_quote_item(
     item_id: int,
     current_user: User = Depends(get_current_superadmin),
@@ -185,7 +185,7 @@ async def delete_quote_item(
     return {"message": "Quote item deactivated successfully"}
 
 
-@router.get("/quote-items/{item_id}/tenant-prices")
+@router.get("/{item_id}/tenant-prices")
 async def list_tenant_prices(
     item_id: int,
     current_user: User = Depends(get_current_superadmin),

@@ -19,6 +19,7 @@ import_models()
 
 from app.models.user import User
 from app.models.tenant import Tenant
+from app.models.security_level import SecurityLevel
 
 router = APIRouter()
 
@@ -117,6 +118,10 @@ async def get_current_user_profile(
     Get current user profile
     Devuelve información del usuario autenticado
     """
+    from app.models.role import Role
+    from app.models.permission import Permission
+    from app.models.module import Module
+    
     # Obtener nombre del tenant si existe
     tenant_name = None
     if current_user.tenant_id:
@@ -127,11 +132,50 @@ async def get_current_user_profile(
         if tenant:
             tenant_name = tenant.name
     
-    # Obtener permisos del usuario (por ahora devolvemos dict vacío)
-    # TODO: Implementar sistema de permisos granular
-    permissions = {}
+    # Obtener roles del usuario
     roles = []
+    permissions_dict = {}
     
+    if current_user.tenant_id:
+        # Obtener roles del usuario con sus permisos
+        result = await db.execute(
+            select(Role)
+            .join(Role.users)
+            .where(User.id == current_user.id)
+        )
+        user_roles = result.scalars().all()
+        roles = [role.name for role in user_roles]
+        
+        # Obtener todos los permisos de esos roles
+        for role in user_roles:
+            result = await db.execute(
+                select(Permission)
+                .join(Permission.roles)
+                .join(Permission.module)
+                .where(Role.id == role.id)
+            )
+            role_permissions = result.scalars().all()
+            
+            for perm in role_permissions:
+                module_key = perm.module.key if perm.module else 'unknown'
+                if module_key not in permissions_dict:
+                    permissions_dict[module_key] = []
+                if perm.action not in permissions_dict[module_key]:
+                    permissions_dict[module_key].append(perm.action)
+    
+    # Obtener módulos del nivel de seguridad del usuario
+    security_modules: list[str] = []
+    security_level_id: int | None = current_user.security_level_id
+    security_level_name: str | None = None
+    if current_user.security_level_id:
+        sl_result = await db.execute(
+            select(SecurityLevel).where(SecurityLevel.id == current_user.security_level_id)
+        )
+        security_level = sl_result.scalar_one_or_none()
+        if security_level:
+            security_level_name = security_level.name
+            security_modules = [m.key for m in security_level.modules]
+
     return UserProfile(
         id=current_user.id,
         email=current_user.email,
@@ -141,7 +185,10 @@ async def get_current_user_profile(
         tenant_id=current_user.tenant_id,
         tenant_name=tenant_name,
         roles=roles,
-        permissions=permissions
+        permissions=permissions_dict,
+        security_modules=security_modules,
+        security_level_id=security_level_id,
+        security_level_name=security_level_name
     )
 
 

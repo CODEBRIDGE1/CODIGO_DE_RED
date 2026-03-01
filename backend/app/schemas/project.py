@@ -75,6 +75,7 @@ class ProjectListItem(BaseModel):
     name: str
     project_type: str
     status: ProjectStatus
+    priority: Optional[str] = None
     start_date: Optional[date]
     due_date: Optional[date]
     total_tasks: int = 0
@@ -91,6 +92,7 @@ class TaskSummary(BaseModel):
     code: Optional[str]
     title: str
     description: Optional[str]
+    notes: Optional[str] = None
     status: TaskStatus
     assignee_user_id: Optional[int]
     assignee_name: Optional[str] = None

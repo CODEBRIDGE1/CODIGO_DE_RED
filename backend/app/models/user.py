@@ -9,6 +9,7 @@ class User(Base):
     
     id = Column(Integer, primary_key=True)
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True, index=True)
+    security_level_id = Column(Integer, ForeignKey("security_levels.id"), nullable=True, index=True)
     email = Column(String(255), nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(200), nullable=False)
@@ -19,5 +20,6 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     tenant = relationship("Tenant", back_populates="users")
+    security_level = relationship("SecurityLevel", back_populates="users")
     roles = relationship("Role", secondary="user_roles", back_populates="users")
     audit_logs = relationship("AuditLog", back_populates="user")
