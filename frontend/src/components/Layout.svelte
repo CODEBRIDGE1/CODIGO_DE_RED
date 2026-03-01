@@ -64,15 +64,6 @@
       moduleKey: 'proyectos'
     },
     {
-      id: 'evidencias',
-      label: 'Evidencias',
-      icon: 'M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z',
-      path: '/evidencias',
-      shortcut: 'ALT+V',
-      permission: 'evidencias.read',
-      moduleKey: 'documentos'
-    },
-    {
       id: 'cotizaciones',
       label: 'Cotizaciones',
       icon: 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z',
