@@ -13,6 +13,7 @@
   import Cotizaciones from './components/Cotizaciones.svelte';
   import Auditoria from './components/Auditoria.svelte';
   import Perfil from './components/Perfil.svelte';
+  import Configuracion from './components/Configuracion.svelte';
   import AdminClientes from './components/admin/AdminClientes.svelte';
   import AdminConceptos from './components/admin/AdminConceptos.svelte';
   import AdminNiveles from './components/admin/AdminNiveles.svelte';
@@ -104,6 +105,8 @@
       <Auditoria />
     {:else if $currentPath === '/perfil'}
       <Perfil />
+    {:else if $currentPath === '/configuracion'}
+      <Configuracion />
     {:else if $currentPath === '/admin/clientes'}
       <AdminClientes />
     {:else if $currentPath === '/admin/conceptos'}
