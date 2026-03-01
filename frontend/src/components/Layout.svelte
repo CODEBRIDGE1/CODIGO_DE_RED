@@ -739,11 +739,3 @@
     transform: translateX(-100%);
   }
 </style>
-  .translate-x-0 {
-    transform: translateX(0);
-  }
-  
-  .-translate-x-full {
-    transform: translateX(-100%);
-  }
-</style>
