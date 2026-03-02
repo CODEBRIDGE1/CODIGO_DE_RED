@@ -146,9 +146,11 @@
         body.is_superadmin = formData.is_superadmin;
       }
       
-      // Solo incluir password si se proporcionó
+      // Password requerido al crear, opcional al editar
       if (formData.password) {
         body.password = formData.password;
+      } else if (modalMode === 'create') {
+        throw new Error('La contraseña es requerida para crear un usuario');
       }
 
       const response = await authStore.fetch(url, {
@@ -160,10 +162,13 @@
         body: JSON.stringify(body)
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.detail || 'Error al guardar usuario');
+        let detail = 'Error al guardar usuario';
+        try {
+          const data = await response.json();
+          detail = data.detail || detail;
+        } catch (_) {}
+        throw new Error(detail);
       }
 
       successMessage = modalMode === 'create' 

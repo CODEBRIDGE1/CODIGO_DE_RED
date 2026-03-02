@@ -147,9 +147,16 @@ async def create_user(
         is_superadmin=False  # Los usuarios normales no pueden crear superadmins
     )
     
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
+    try:
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El email ya está registrado"
+        )
     
     return user
 
