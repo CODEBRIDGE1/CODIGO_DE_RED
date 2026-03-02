@@ -28,7 +28,9 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     id: int
     tenant_id: Optional[int]
+    security_level_id: Optional[int] = None
     is_superadmin: bool
+    photo_url: Optional[str] = None
     last_login_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
