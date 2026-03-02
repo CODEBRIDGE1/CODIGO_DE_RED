@@ -130,8 +130,8 @@
 
     try {
       const url = modalMode === 'create' 
-        ? `/api/v1/users`
-        : `/api/v1/users/${selectedUser?.id}`;
+        ? `/api/v1/users/`
+        : `/api/v1/users/${selectedUser?.id}/`;
       
       const method = modalMode === 'create' ? 'POST' : 'PUT';
       
