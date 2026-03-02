@@ -9,11 +9,20 @@
     is_active: boolean;
     is_superadmin: boolean;
     tenant_id: number | null;
+    security_level_id: number | null;
     last_login_at: string | null;
     created_at: string;
   }
 
+  interface SecurityLevel {
+    id: number;
+    name: string;
+    description: string;
+    color: string;
+  }
+
   let users = $state<User[]>([]);
+  let securityLevels = $state<SecurityLevel[]>([]);
   let loading = $state(true);
   let showModal = $state(false);
   let modalMode = $state<'create' | 'edit'>('create');
@@ -40,19 +49,44 @@
     full_name: '',
     password: '',
     is_active: true,
-    is_superadmin: false
+    is_superadmin: false,
+    security_level_id: null as number | null
   });
 
   const accessToken = $derived($authStore.accessToken);
 
-  // Cargar usuarios cuando el token esté disponible
+  // Cargar usuarios y niveles cuando el token esté disponible
   let hasLoadedOnce = false;
   $effect(() => {
     if (accessToken && !hasLoadedOnce) {
       hasLoadedOnce = true;
       loadUsers();
+      loadSecurityLevels();
     }
   });
+
+  async function loadSecurityLevels() {
+    // Solo cargar niveles de seguridad si el usuario es superadmin
+    if (!currentUser?.isSuperadmin) {
+      return;
+    }
+    
+    try {
+      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/security-levels/`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        securityLevels = await response.json();
+      }
+    } catch (err) {
+      console.error('Error loading security levels:', err);
+      // No mostrar error al usuario si no tiene permisos
+    }
+  }
 
   async function loadUsers() {
     loading = true;
@@ -106,7 +140,8 @@
       full_name: '',
       password: '',
       is_active: true,
-      is_superadmin: false
+      is_superadmin: false,
+      security_level_id: null
     };
     showModal = true;
   }
@@ -119,7 +154,8 @@
       full_name: user.full_name,
       password: '',
       is_active: user.is_active,
-      is_superadmin: user.is_superadmin || false
+      is_superadmin: user.is_superadmin || false,
+      security_level_id: user.security_level_id
     };
     showModal = true;
   }
@@ -130,8 +166,8 @@
 
     try {
       const url = modalMode === 'create' 
-        ? `/api/v1/users/`
-        : `/api/v1/users/${selectedUser?.id}/`;
+        ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/users/`
+        : `${import.meta.env.VITE_API_BASE_URL}/api/v1/users/${selectedUser?.id}/`;
       
       const method = modalMode === 'create' ? 'POST' : 'PUT';
       
@@ -140,6 +176,11 @@
         full_name: formData.full_name,
         is_active: formData.is_active
       };
+      
+      // TEMPORAL: Siempre enviar security_level_id = 1 por defecto para testing
+      if (modalMode === 'create') {
+        body.security_level_id = formData.security_level_id || 1;
+      }
       
       // Solo superadmin puede asignar rol de superadmin
       if (isAdminView && currentUser?.isSuperadmin) {
@@ -495,6 +536,23 @@
               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             <p class="text-xs text-gray-500 mt-1">Mínimo 8 caracteres</p>
+          </div>
+
+          <!-- Nivel de Seguridad -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Nivel de Seguridad
+            </label>
+            <select
+              bind:value={formData.security_level_id}
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value={null}>Sin asignar</option>
+              {#each securityLevels as level}
+                <option value={level.id}>{level.name}</option>
+              {/each}
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Define los permisos y accesos del usuario</p>
           </div>
 
           <!-- Tipo de Usuario (solo para superadmin) -->

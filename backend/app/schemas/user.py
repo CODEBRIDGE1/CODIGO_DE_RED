@@ -15,6 +15,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=100)
     tenant_id: Optional[int] = None
+    security_level_id: Optional[int] = None
     is_superadmin: bool = False
 
 

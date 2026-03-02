@@ -144,6 +144,7 @@ async def create_user(
         hashed_password=hash_password(user_data.password),
         is_active=user_data.is_active,
         tenant_id=tenant_id,
+        security_level_id=user_data.security_level_id,
         is_superadmin=False  # Los usuarios normales no pueden crear superadmins
     )
     
