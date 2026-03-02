@@ -322,8 +322,8 @@ class CompanyResponse(BaseModel):
     razon_social: str
     nombre_comercial: Optional[str] = None
     rfc: str
-    rpu: str
-    tipo_suministro: str
+    rpu: Optional[str] = None
+    tipo_suministro: Optional[str] = None
     ciudad: Optional[str] = None
     estado: Optional[str] = None
     is_active: bool
