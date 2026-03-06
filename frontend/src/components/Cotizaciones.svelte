@@ -48,9 +48,31 @@
     lines: QuoteLine[];
   }
 
+  interface OrganizationInfo {
+    razon_social: string;
+    nombre_comercial: string;
+    rfc: string;
+    regimen_fiscal: string;
+    logo_url: string | null;
+    color_primario: string | null;
+    color_secundario: string | null;
+    calle: string;
+    numero_exterior: string;
+    numero_interior: string | null;
+    colonia: string;
+    ciudad: string;
+    estado: string;
+    codigo_postal: string;
+    pais: string;
+    telefono: string;
+    email: string;
+    sitio_web: string | null;
+  }
+
   let quotes = $state<Quote[]>([]);
   let companies = $state<Company[]>([]);
   let quoteItems = $state<QuoteItem[]>([]);
+  let organizationInfo = $state<OrganizationInfo | null>(null);
   let loading = $state(true);
   let loadingItems = $state(false);
   let showModal = $state(false);
@@ -93,7 +115,27 @@
   onMount(() => {
     loadQuotes();
     loadCompanies();
+    loadOrganizationInfo();
   });
+
+  async function loadOrganizationInfo() {
+    // Solo cargar si es superadmin
+    const user = $authStore.user;
+    if (!user?.isSuperadmin) return;
+    
+    try {
+      const response = await authStore.fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/organization/me`,
+        { headers: { Authorization: `Bearer ${$authStore.accessToken}` } }
+      );
+      
+      if (response.ok) {
+        organizationInfo = await response.json();
+      }
+    } catch (error) {
+      console.error('Error al cargar información de la organización:', error);
+    }
+  }
 
   async function loadQuotes() {
     try {
@@ -428,6 +470,7 @@
 
   function printQuotePDF(quote: Quote) {
     const q = quote;
+    const org = organizationInfo;
     const subtotal = Number(q.total);
     const ivaAmt = Number(q.iva_amount ?? 0);
     const totalFinal = Number(q.total_con_iva) > 0 ? Number(q.total_con_iva) : subtotal;
@@ -441,6 +484,11 @@
     const badgeColor = badgeColorMap[q.status] || '#374151';
     const statusLabel: Record<string, string> = { draft: 'Borrador', sent: 'En revisión', approved: 'Aprobada', rejected: 'Rechazada', accepted: 'Aceptada' };
     const styleTag = 'style';
+    
+    // Usar colores de la organización si están configurados
+    const primaryColor = org?.color_primario || '#1d4ed8';
+    const secondaryColor = org?.color_secundario || '#3b82f6';
+    
     function fmtMXN(v: number) {
       return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v);
     }
@@ -453,6 +501,17 @@
         <td style="text-align:right">${l.unit_price > 0 ? fmtMXN(Number(l.unit_price) * Number(l.quantity)) : '—'}</td>
       </tr>`).join('');
 
+    // Construir dirección completa de la organización
+    let direccionOrg = '';
+    if (org) {
+      direccionOrg = `${org.calle} ${org.numero_exterior}${org.numero_interior ? ' Int. ' + org.numero_interior : ''}, ${org.colonia}<br/>`;
+      direccionOrg += `${org.ciudad}, ${org.estado}, C.P. ${org.codigo_postal}<br/>`;
+      direccionOrg += `Tel: ${org.telefono} | Email: ${org.email}`;
+      if (org.sitio_web) {
+        direccionOrg += `<br/>${org.sitio_web}`;
+      }
+    }
+
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -461,11 +520,13 @@
   <${styleTag}>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; font-size: 11pt; color: #1a1a1a; padding: 20mm 18mm; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; border-bottom: 3px solid #1d4ed8; padding-bottom: 16px; }
-    .logo-area h1 { font-size: 20pt; font-weight: 800; color: #1d4ed8; letter-spacing: -0.5px; }
-    .logo-area p { font-size: 9pt; color: #6b7280; margin-top: 2px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; border-bottom: 3px solid ${primaryColor}; padding-bottom: 16px; }
+    .logo-area { display: flex; align-items: center; gap: 12px; }
+    .logo-area img { max-height: 60px; max-width: 150px; object-fit: contain; }
+    .logo-area .company-info h1 { font-size: 20pt; font-weight: 800; color: ${primaryColor}; letter-spacing: -0.5px; }
+    .logo-area .company-info p { font-size: 9pt; color: #6b7280; margin-top: 2px; line-height: 1.4; }
     .doc-info { text-align: right; }
-    .doc-info .quote-num { font-size: 16pt; font-weight: 700; color: #1d4ed8; }
+    .doc-info .quote-num { font-size: 16pt; font-weight: 700; color: ${primaryColor}; }
     .doc-info .meta { font-size: 9pt; color: #6b7280; line-height: 1.6; margin-top: 4px; }
     .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background: ${badgeBg}; color: ${badgeColor}; }
     .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px; margin-bottom: 20px; }
@@ -473,7 +534,7 @@
     .card p { font-size: 10pt; line-height: 1.6; color: #1e293b; }
     .card .name { font-size: 12pt; font-weight: 700; color: #0f172a; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10pt; }
-    thead tr { background: #1d4ed8; color: white; }
+    thead tr { background: ${primaryColor}; color: white; }
     thead th { padding: 8px 10px; text-align: left; font-weight: 600; font-size: 9pt; }
     thead th:nth-child(3), thead th:nth-child(4), thead th:nth-child(5) { text-align: right; }
     tbody tr:nth-child(even) { background: #f8fafc; }
@@ -483,20 +544,24 @@
     .totals { margin-left: auto; width: 280px; }
     .totals table { margin-bottom: 0; }
     .totals td { padding: 5px 10px; border-bottom: none; }
-    .total-row { background: #1d4ed8; color: white; font-weight: 700; font-size: 11pt; }
+    .total-row { background: ${primaryColor}; color: white; font-weight: 700; font-size: 11pt; }
     .total-row td { padding: 8px 10px; border-radius: 4px; }
     .comments { margin-top: 20px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 12px 14px; }
     .comments h3 { font-size: 9pt; font-weight: 700; color: #92400e; margin-bottom: 6px; text-transform: uppercase; }
     .comments p { font-size: 10pt; color: #78350f; white-space: pre-line; line-height: 1.5; }
     .footer { margin-top: 30px; text-align: center; font-size: 8pt; color: #94a3b8; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+    .org-footer { margin-top: 15px; background: #f8fafc; padding: 12px; border-radius: 4px; font-size: 8pt; color: #64748b; text-align: center; line-height: 1.5; }
     @media print { body { padding: 15mm 12mm; } }
   </${styleTag}>
 </head>
 <body>
   <div class="header">
     <div class="logo-area">
-      <h1>CÓDIGO DE RED</h1>
-      <p>Soluciones en Energía Eléctrica</p>
+      ${org?.logo_url ? `<img src="${org.logo_url}" alt="Logo" />` : ''}
+      <div class="company-info">
+        <h1>${org?.nombre_comercial || org?.razon_social || 'CÓDIGO DE RED'}</h1>
+        <p>${org?.razon_social && org?.nombre_comercial !== org?.razon_social ? org.razon_social + '<br/>' : ''}${org ? `RFC: ${org.rfc}` : 'Soluciones en Energía Eléctrica'}</p>
+      </div>
     </div>
     <div class="doc-info">
       <div class="quote-num">${q.quote_number}</div>
@@ -537,7 +602,12 @@
     <h3>Notas y Condiciones</h3>
     <p>${q.comentarios_admin}</p>
   </div>` : ''}
-  <div class="footer">Cotización generada el ${new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })} — Código de Red</div>
+  ${org ? `
+  <div class="org-footer">
+    <strong>${org.nombre_comercial || org.razon_social}</strong><br/>
+    ${direccionOrg}
+  </div>` : ''}
+  <div class="footer">Cotización generada el ${new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
 </body>
 </html>`;
     const win = window.open('', '_blank', 'width=900,height=700');
