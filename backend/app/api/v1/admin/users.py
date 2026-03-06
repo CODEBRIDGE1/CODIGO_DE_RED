@@ -25,6 +25,7 @@ class UserCreate(BaseModel):
     password: str = Field(..., min_length=8)
     tenant_id: int
     is_active: bool = True
+    is_superadmin: bool = False
     security_level_id: Optional[int] = None
 
 
@@ -33,6 +34,7 @@ class UserUpdate(BaseModel):
     password: Optional[str] = Field(None, min_length=8)
     tenant_id: Optional[int] = None
     is_active: Optional[bool] = None
+    is_superadmin: Optional[bool] = None
     security_level_id: Optional[int] = None
 
 
@@ -86,7 +88,7 @@ async def create_user(
         hashed_password=hash_password(user_data.password),
         tenant_id=user_data.tenant_id,
         is_active=user_data.is_active,
-        is_superadmin=False,
+        is_superadmin=user_data.is_superadmin,
         security_level_id=user_data.security_level_id,
     )
     db.add(db_user)
@@ -221,6 +223,12 @@ async def update_user(
 ):
     """Actualizar usuario (solo superadmin)"""
     
+    # Debug: log los datos recibidos
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"🔍 Actualizando usuario {user_id}")
+    logger.info(f"   Datos recibidos: {user_data.model_dump(exclude_unset=True)}")
+    
     # Buscar usuario
     result = await db.execute(
         select(User).where(User.id == user_id)
@@ -230,8 +238,9 @@ async def update_user(
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    if db_user.is_superadmin:
-        raise HTTPException(status_code=400, detail="Cannot modify superadmin users")
+    # Solo prevenir desactivación de superadmins, pero permitir otras modificaciones
+    if db_user.is_superadmin and user_data.is_active is False:
+        raise HTTPException(status_code=400, detail="Cannot deactivate superadmin users")
     
     # Actualizar campos
     update_data = user_data.model_dump(exclude_unset=True)
@@ -256,8 +265,13 @@ async def update_user(
     for field, value in update_data.items():
         setattr(db_user, field, value)
     
+    logger.info(f"   Campos actualizados: {list(update_data.keys())}")
+    logger.info(f"   is_superadmin después de actualizar: {db_user.is_superadmin}")
+    
     await db.commit()
     await db.refresh(db_user)
+    
+    logger.info(f"   is_superadmin después de commit: {db_user.is_superadmin}")
     
     # Obtener nombre del tenant
     tenant_name = None

@@ -5,6 +5,7 @@ Endpoints para gestión de usuarios
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
+from sqlalchemy.exc import IntegrityError
 from typing import Optional
 
 from app.schemas.user import UserCreate, UserUpdate, UserResponse, UserListResponse

@@ -50,6 +50,7 @@
     password: '',
     is_active: true,
     is_superadmin: false,
+    tenant_id: null as number | null,
     security_level_id: null as number | null
   });
 
@@ -108,7 +109,18 @@
       if (searchTerm) params.append('search', searchTerm);
       if (filterActive !== null) params.append('is_active', filterActive.toString());
 
-      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/?${params}`, {
+      // Detectar vista de admin en el momento de la carga
+      const currentPath = window.location.pathname;
+      const isAdmin = currentPath === '/admin/usuarios';
+      
+      // Usar endpoint de admin si estamos en vista de admin
+      const endpoint = isAdmin
+        ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/users/?${params}`
+        : `${import.meta.env.VITE_API_BASE_URL}/api/v1/users/?${params}`;
+
+      console.log('🔍 Cargando usuarios desde:', endpoint, '| isAdmin:', isAdmin);
+
+      const response = await authStore.fetch(endpoint, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
@@ -121,8 +133,15 @@
       }
 
       const data = await response.json();
-      users = data.users;
-      totalUsers = data.total;
+      
+      // El endpoint de admin devuelve array directamente, el normal devuelve {users, total}
+      if (isAdmin) {
+        users = Array.isArray(data) ? data : [];
+        totalUsers = users.length;
+      } else {
+        users = data.users;
+        totalUsers = data.total;
+      }
       
     } catch (err: any) {
       errorMessage = err.message || 'Error al conectar con el servidor';
@@ -141,6 +160,7 @@
       password: '',
       is_active: true,
       is_superadmin: false,
+      tenant_id: currentUser?.tenantId || null,
       security_level_id: null
     };
     showModal = true;
@@ -155,8 +175,17 @@
       password: '',
       is_active: user.is_active,
       is_superadmin: user.is_superadmin || false,
+      tenant_id: user.tenant_id,
       security_level_id: user.security_level_id
     };
+    
+    console.log('🔍 Abriendo modal de edición:');
+    console.log('  - Usuario a editar:', user.email, '- is_superadmin:', user.is_superadmin);
+    console.log('  - isAdminView:', isAdminView);
+    console.log('  - currentUser?.isSuperadmin:', currentUser?.isSuperadmin);
+    console.log('  - formData.is_superadmin:', formData.is_superadmin);
+    console.log('  - window.location.pathname:', window.location.pathname);
+    
     showModal = true;
   }
 
@@ -165,9 +194,31 @@
     successMessage = '';
 
     try {
+      // Detectar vista de admin en el momento del envío
+      const currentPath = window.location.pathname;
+      const isAdmin = currentPath === '/admin/usuarios';
+      
+      console.log('🔍 DEBUG - Estado al enviar:');
+      console.log('  - currentPath:', currentPath);
+      console.log('  - isAdmin:', isAdmin);
+      console.log('  - isAdminView:', isAdminView);
+      console.log('  - currentUser?.isSuperadmin:', currentUser?.isSuperadmin);
+      console.log('  - formData.is_superadmin:', formData.is_superadmin);
+      
+      // Construir URL base (usar URLs relativas si VITE_API_BASE_URL está vacío)
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      
+      // FORZAR uso de endpoint admin si estamos en /admin/usuarios
+      const baseUrl = isAdmin
+        ? `${apiBaseUrl}/api/v1/admin/users`
+        : `${apiBaseUrl}/api/v1/users`;
+      
       const url = modalMode === 'create' 
-        ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/users/`
-        : `${import.meta.env.VITE_API_BASE_URL}/api/v1/users/${selectedUser?.id}/`;
+        ? `${baseUrl}/`
+        : `${baseUrl}/${selectedUser?.id}/`;
+      
+      console.log('  - URL construida:', url);
+      console.log('  - baseUrl:', baseUrl);
       
       const method = modalMode === 'create' ? 'POST' : 'PUT';
       
@@ -177,14 +228,32 @@
         is_active: formData.is_active
       };
       
-      // TEMPORAL: Siempre enviar security_level_id = 1 por defecto para testing
-      if (modalMode === 'create') {
-        body.security_level_id = formData.security_level_id || 1;
-      }
-      
-      // Solo superadmin puede asignar rol de superadmin
-      if (isAdminView && currentUser?.isSuperadmin) {
-        body.is_superadmin = formData.is_superadmin;
+      // Para admin view, incluir campos adicionales
+      if (isAdmin) {
+        // tenant_id es requerido en admin view para crear
+        if (modalMode === 'create') {
+          // Usar tenant_id del formulario, del usuario actual, o 1 por defecto
+          body.tenant_id = formData.tenant_id || currentUser?.tenantId || 1;
+        }
+        
+        // Solo superadmin puede asignar rol de superadmin
+        if (currentUser?.isSuperadmin) {
+          body.is_superadmin = formData.is_superadmin;
+          console.log('  ✅ AGREGANDO is_superadmin al body:', formData.is_superadmin);
+        } else {
+          console.log('  ❌ NO agregando is_superadmin (usuario no es superadmin)');
+        }
+        
+        // Security level para admin view
+        if (formData.security_level_id) {
+          body.security_level_id = formData.security_level_id;
+        }
+      } else {
+        console.log('  ℹ️ Vista normal (no admin), no enviando is_superadmin');
+        // Para vista normal, siempre enviar security_level_id = 1 por defecto
+        if (modalMode === 'create') {
+          body.security_level_id = formData.security_level_id || 1;
+        }
       }
       
       // Password requerido al crear, opcional al editar
@@ -193,6 +262,11 @@
       } else if (modalMode === 'create') {
         throw new Error('La contraseña es requerida para crear un usuario');
       }
+
+      console.log('📤 ENVIANDO AL SERVIDOR:');
+      console.log('  - method:', method);
+      console.log('  - url:', url);
+      console.log('  - body:', JSON.stringify(body, null, 2));
 
       const response = await authStore.fetch(url, {
         method,
@@ -235,7 +309,15 @@
     }
 
     try {
-      const response = await authStore.fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/${user.id}/`, {
+      // Detectar vista de admin
+      const currentPath = window.location.pathname;
+      const isAdmin = currentPath === '/admin/usuarios';
+      
+      const endpoint = isAdmin
+        ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/users/${user.id}/`
+        : `${import.meta.env.VITE_API_BASE_URL}/api/v1/users/${user.id}/`;
+      
+      const response = await authStore.fetch(endpoint, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -555,18 +637,18 @@
             <p class="text-xs text-gray-500 mt-1">Define los permisos y accesos del usuario</p>
           </div>
 
-          <!-- Tipo de Usuario (solo para superadmin) -->
-          {#if isAdminView && currentUser?.isSuperadmin}
-            <div class="flex items-center">
+          <!-- Tipo de Usuario (solo para superadmin en vista de admin) -->
+          {#if (window.location.pathname === '/admin/usuarios') && currentUser?.isSuperadmin}
+            <div class="flex items-center p-3 bg-purple-50 rounded-lg border border-purple-200">
               <input
                 type="checkbox"
                 id="is_superadmin"
                 bind:checked={formData.is_superadmin}
-                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                class="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
               />
               <label for="is_superadmin" class="ml-2 block text-sm text-gray-700">
-                <span class="font-medium">Superadministrador</span>
-                <span class="text-xs text-gray-500 block">Acceso completo al sistema</span>
+                <span class="font-medium text-purple-700">⭐ Superadministrador</span>
+                <span class="text-xs text-purple-600 block">Acceso completo al sistema sin restricciones</span>
               </label>
             </div>
           {/if}
