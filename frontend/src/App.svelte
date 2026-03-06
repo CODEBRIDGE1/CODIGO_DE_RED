@@ -18,6 +18,7 @@
   import AdminConceptos from './components/admin/AdminConceptos.svelte';
   import AdminNiveles from './components/admin/AdminNiveles.svelte';
   import AdminCotizaciones from './components/admin/AdminCotizaciones.svelte';
+  import AdminOrganizacion from './components/admin/AdminOrganizacion.svelte';
   
   const isAuthenticated = $derived($authStore.isAuthenticated);
 
@@ -109,6 +110,8 @@
       <Configuracion />
     {:else if $currentPath === '/admin/clientes'}
       <AdminClientes />
+    {:else if $currentPath === '/admin/organizacion'}
+      <AdminOrganizacion />
     {:else if $currentPath === '/admin/conceptos'}
       <AdminConceptos />
     {:else if $currentPath === '/admin/niveles'}

@@ -24,3 +24,4 @@ class User(Base):
     security_level = relationship("SecurityLevel", back_populates="users")
     roles = relationship("Role", secondary="user_roles", back_populates="users")
     audit_logs = relationship("AuditLog", back_populates="user")
+    organization = relationship("SuperadminOrganization", back_populates="user", uselist=False)

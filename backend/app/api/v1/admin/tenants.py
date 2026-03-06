@@ -249,9 +249,9 @@ async def delete_tenant(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     
-    # Soft delete
+    # Soft delete - marcar como suspendido
     from app.models.tenant import TenantStatus
-    tenant.status = TenantStatus.INACTIVE
+    tenant.status = TenantStatus.SUSPENDED
     
     await db.commit()
     
