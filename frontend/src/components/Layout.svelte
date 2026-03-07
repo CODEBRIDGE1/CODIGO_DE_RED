@@ -277,8 +277,8 @@
             </svg>
           </button>
           
-          <div class="ml-4 flex items-center">
-            <img src="/idepro-logo.png" alt="IDEPRO APP" class="h-8 w-auto" />
+          <div class="ml-2 flex items-center -my-2">
+            <img src="/idepro-logo.png" alt="IDEPRO APP" class="h-12 w-auto" />
           </div>
         </div>
 

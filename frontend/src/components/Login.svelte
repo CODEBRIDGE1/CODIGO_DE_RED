@@ -161,8 +161,8 @@
     <!-- Content -->
     <div class="relative z-10 flex flex-col justify-between p-12 text-white">
       <!-- Logo -->
-      <div class="flex items-center">
-        <img src="/idepro-logo.png" alt="IDEPRO APP" class="h-14 w-auto brightness-0 invert" />
+      <div class="flex items-center -ml-4">
+        <img src="/idepro-logo.png" alt="IDEPRO APP" class="h-24 w-auto brightness-0 invert" />
       </div>
       
       <!-- Main Content -->
@@ -210,7 +210,7 @@
     <div class="w-full max-w-md">
       <!-- Mobile Logo -->
       <div class="lg:hidden mb-8 text-center">
-        <img src="/idepro-logo.png" alt="IDEPRO APP" class="h-10 w-auto mx-auto" />
+        <img src="/idepro-logo.png" alt="IDEPRO APP" class="h-16 w-auto mx-auto" />
       </div>
 
       <!-- Welcome Text -->
