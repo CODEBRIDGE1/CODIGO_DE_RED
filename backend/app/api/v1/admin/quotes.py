@@ -42,6 +42,7 @@ class AdminQuoteOut(BaseModel):
     total_con_iva: Optional[Decimal] = Decimal("0")
     fecha_vigencia: Optional[date] = None
     comentarios_admin: Optional[str] = None
+    pagos: Optional[list] = None
     numero_transformadores: Optional[int]
     observaciones: Optional[str]
     created_at: datetime
@@ -79,6 +80,7 @@ class AdminQuoteDetailsUpdate(BaseModel):
     iva_percent: Optional[int] = None          # 0, 8, 16
     fecha_vigencia: Optional[date] = None
     comentarios_admin: Optional[str] = None
+    pagos: Optional[list] = None  # [{"concepto": str, "porcentaje": float}]
 
 
 class AdminQuoteStatusUpdate(BaseModel):
@@ -100,6 +102,7 @@ def _build_quote_out(q: Quote) -> AdminQuoteOut:
         total_con_iva=q.total_con_iva or Decimal("0"),
         fecha_vigencia=q.fecha_vigencia,
         comentarios_admin=q.comentarios_admin,
+        pagos=q.pagos,
         numero_transformadores=q.numero_transformadores,
         observaciones=q.observaciones,
         created_at=q.created_at,
@@ -291,6 +294,9 @@ async def update_quote_details(
 
     if payload.comentarios_admin is not None:
         quote.comentarios_admin = payload.comentarios_admin
+
+    if payload.pagos is not None:
+        quote.pagos = payload.pagos if len(payload.pagos) > 0 else None
 
     await db.commit()
 

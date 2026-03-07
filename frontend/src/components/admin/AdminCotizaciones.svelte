@@ -24,6 +24,7 @@
     total_con_iva: number;
     fecha_vigencia: string | null;
     comentarios_admin: string | null;
+    pagos: Array<{concepto: string; porcentaje: number}> | null;
     numero_transformadores: number | null;
     observaciones: string | null;
     created_at: string;
@@ -128,6 +129,7 @@
   let draftIva = $state(16);
   let draftVigencia = $state('');
   let draftComentarios = $state('');
+  let draftPagos = $state<Array<{concepto: string; porcentaje: number}>>([]);
   let savingDetails = $state(false);
   let hasLoadedQuotes = $state(false);
 
@@ -238,6 +240,7 @@
     draftIva = q.iva_percent ?? 16;
     draftVigencia = q.fecha_vigencia ? q.fecha_vigencia.split('T')[0] : '';
     draftComentarios = q.comentarios_admin ?? '';
+    draftPagos = q.pagos ? q.pagos.map(p => ({...p})) : [];
     showQuoteDetail = true;
   }
 
@@ -343,7 +346,8 @@
           body: JSON.stringify({
             iva_percent: draftIva,
             fecha_vigencia: draftVigencia || null,
-            comentarios_admin: draftComentarios || null
+            comentarios_admin: draftComentarios || null,
+            pagos: draftPagos.length > 0 ? draftPagos : null
           })
         }
       );
@@ -444,6 +448,24 @@
     if (q.telefono) clienteLineas.push(`Tel: ${q.telefono}`);
     if (q.email) clienteLineas.push(q.email);
 
+    // Desglose de pagos
+    const pagosData = q.pagos && q.pagos.length > 0 ? q.pagos : null;
+    const pagosRows = pagosData ? pagosData.map((p: {concepto: string; porcentaje: number}, i: number) => {
+      const monto = fmtMXN(Number(totalFinal) * Number(p.porcentaje) / 100);
+      return `<tr>
+        <td class="p-num">${i + 1}</td>
+        <td class="p-concepto">${p.concepto}</td>
+        <td class="p-pct">${p.porcentaje}%</td>
+        <td class="p-monto">${monto}</td>
+      </tr>`;
+    }).join('') : '';
+    const pagosSection = pagosData ? `
+      <div class="pagos-bar">Condiciones de Pago</div>
+      <table class="pagos-table">
+        <thead><tr><th>#</th><th>Concepto</th><th>%</th><th style="text-align:right">Importe</th></tr></thead>
+        <tbody>${pagosRows}</tbody>
+      </table>` : '';
+
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -499,6 +521,18 @@
     .importe-bar { background: ${navyColor}; color: white; padding: 8px 14px; margin-top: 10px; font-size: 9pt; line-height: 1.5; }
     .importe-bar .i-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-size: 8pt; opacity: 0.8; }
     .importe-bar .i-monto { font-size: 10pt; font-weight: 700; margin-top: 2px; }
+
+    /* ── CONDICIONES DE PAGO ── */
+    .pagos-bar { background: #2d4a22; color: white; text-align: center; font-weight: 700;
+      font-size: 9.5pt; letter-spacing: 0.8px; text-transform: uppercase; padding: 6px 10px; margin-top: 14px; }
+    .pagos-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 0; }
+    .pagos-table th { background: #f0f0f0; padding: 5px 10px; text-align: left; border: 1px solid #ccc; font-weight: 700; font-size: 8.5pt; text-transform: uppercase; }
+    .pagos-table th:nth-child(3), .pagos-table th:nth-child(4) { text-align: right; }
+    .pagos-table td { padding: 5px 10px; border: 1px solid #ccc; }
+    td.p-num { width: 28px; text-align: center; color: #666; background: #f7f7f7; }
+    td.p-concepto { }
+    td.p-pct { width: 50px; text-align: right; color: #444; }
+    td.p-monto { width: 130px; text-align: right; font-weight: 600; }
 
     /* ── FOOTER ── */
     .doc-footer { margin-top: 22px; border-top: 1.5px solid #bbb; padding-top: 10px; font-size: 8.5pt; color: #444; line-height: 1.6; text-align: center; }
@@ -590,6 +624,9 @@
     <div class="i-label">Importe con Letra:</div>
     <div class="i-monto">${numeroALetras(totalFinal)}</div>
   </div>
+
+  <!-- CONDICIONES DE PAGO -->
+  ${pagosSection}
 
   <!-- FOOTER -->
   <div class="doc-footer">
@@ -1461,6 +1498,106 @@
               placeholder="Ej: Precios sujetos a cambio, incluye mano de obra, garantía de 6 meses..."
               class="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none bg-white"
             ></textarea>
+          </div>
+
+          <!-- ── DESGLOSE DE PAGOS ─────────────────────── -->
+          <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+            <div class="flex items-center justify-between bg-gray-50 px-3 py-2 border-b border-gray-200">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <span class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Desglose de Pagos</span>
+                {#if draftPagos.length > 0}
+                  {@const totalPct = draftPagos.reduce((s, p) => s + Number(p.porcentaje), 0)}
+                  <span class="text-xs px-2 py-0.5 rounded-full font-medium {totalPct === 100 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">
+                    {totalPct}%
+                  </span>
+                {/if}
+              </div>
+              <button
+                type="button"
+                onclick={() => draftPagos = [...draftPagos, { concepto: 'Anticipo', porcentaje: 0 }]}
+                class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Agregar pago
+              </button>
+            </div>
+
+            {#if draftPagos.length === 0}
+              <p class="text-xs text-gray-400 italic text-center py-3 px-3">
+                Sin desglose de pagos. Presiona "Agregar pago" para definir anticipos y plazos.
+              </p>
+            {:else}
+              <div class="divide-y divide-gray-100">
+                {#each draftPagos as pago, i}
+                  <div class="flex items-center gap-2 px-3 py-2">
+                    <span class="text-xs text-gray-400 w-4 flex-shrink-0 text-center">{i + 1}</span>
+                    <input
+                      type="text"
+                      bind:value={pago.concepto}
+                      placeholder="Descripción del pago"
+                      class="flex-1 text-sm border border-gray-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-400 focus:border-transparent bg-white min-w-0"
+                    />
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                      <input
+                        type="number"
+                        bind:value={pago.porcentaje}
+                        min="1"
+                        max="100"
+                        step="1"
+                        class="w-16 text-sm border border-gray-300 rounded px-2 py-1.5 text-right focus:ring-1 focus:ring-blue-400 bg-white"
+                      />
+                      <span class="text-xs text-gray-500">%</span>
+                    </div>
+                    {#if selectedQuote && (selectedQuote.total_con_iva > 0 || selectedQuote.total > 0)}
+                      {@const base = selectedQuote.total_con_iva > 0 ? selectedQuote.total_con_iva : selectedQuote.total}
+                      <span class="text-xs text-gray-500 w-24 text-right flex-shrink-0">
+                        {new Intl.NumberFormat('es-MX', {style:'currency', currency:'MXN'}).format(Number(base) * Number(pago.porcentaje) / 100)}
+                      </span>
+                    {/if}
+                    <button
+                      type="button"
+                      onclick={() => { draftPagos = draftPagos.filter((_, idx) => idx !== i); }}
+                      class="text-gray-400 hover:text-red-500 flex-shrink-0 p-0.5"
+                      title="Eliminar"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    </button>
+                  </div>
+                {/each}
+              </div>
+              <!-- Plantillas rápidas -->
+              <div class="bg-gray-50 border-t border-gray-200 px-3 py-2 flex flex-wrap gap-1.5 items-center">
+                <span class="text-xs text-gray-500">Plantillas:</span>
+                <button type="button" onclick={() => draftPagos = [
+                  {concepto:'Anticipo inicial', porcentaje: 50},
+                  {concepto:'A mitad del proyecto', porcentaje: 30},
+                  {concepto:'Contra entrega', porcentaje: 20}
+                ]} class="text-xs px-2 py-0.5 rounded bg-white border border-gray-300 hover:bg-blue-50 hover:border-blue-300 text-gray-600">50/30/20</button>
+                <button type="button" onclick={() => draftPagos = [
+                  {concepto:'Anticipo inicial', porcentaje: 50},
+                  {concepto:'Contra entrega', porcentaje: 50}
+                ]} class="text-xs px-2 py-0.5 rounded bg-white border border-gray-300 hover:bg-blue-50 hover:border-blue-300 text-gray-600">50/50</button>
+                <button type="button" onclick={() => draftPagos = [
+                  {concepto:'Anticipo inicial', porcentaje: 30},
+                  {concepto:'Avance 60%', porcentaje: 40},
+                  {concepto:'Contra entrega', porcentaje: 30}
+                ]} class="text-xs px-2 py-0.5 rounded bg-white border border-gray-300 hover:bg-blue-50 hover:border-blue-300 text-gray-600">30/40/30</button>
+                <button type="button" onclick={() => draftPagos = [
+                  {concepto:'Anticipo inicial', porcentaje: 50},
+                  {concepto:'Avance 50%', porcentaje: 20},
+                  {concepto:'Avance 80%', porcentaje: 20},
+                  {concepto:'Contra entrega', porcentaje: 10}
+                ]} class="text-xs px-2 py-0.5 rounded bg-white border border-gray-300 hover:bg-blue-50 hover:border-blue-300 text-gray-600">50/20/20/10</button>
+                <button type="button" onclick={() => draftPagos = []} class="text-xs px-2 py-0.5 rounded bg-white border border-red-200 hover:bg-red-50 text-red-500 ml-auto">Limpiar</button>
+              </div>
+            {/if}
           </div>
         </div>
 

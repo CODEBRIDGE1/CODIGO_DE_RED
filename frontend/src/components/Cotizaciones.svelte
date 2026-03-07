@@ -536,6 +536,24 @@
       </tr>`;
     }).join('');
 
+    // Desglose de pagos
+    const pagosData = (q as any).pagos && (q as any).pagos.length > 0 ? (q as any).pagos : null;
+    const pagosRows = pagosData ? pagosData.map((p: {concepto: string; porcentaje: number}, i: number) => {
+      const monto = fmtMXN(Number(totalFinal) * Number(p.porcentaje) / 100);
+      return `<tr>
+        <td class="p-num">${i + 1}</td>
+        <td class="p-concepto">${p.concepto}</td>
+        <td class="p-pct">${p.porcentaje}%</td>
+        <td class="p-monto">${monto}</td>
+      </tr>`;
+    }).join('') : '';
+    const pagosSection = pagosData ? `
+      <div class="pagos-bar">Condiciones de Pago</div>
+      <table class="pagos-table">
+        <thead><tr><th>#</th><th>Concepto</th><th>%</th><th style="text-align:right">Importe</th></tr></thead>
+        <tbody>${pagosRows}</tbody>
+      </table>` : '';
+
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -591,6 +609,18 @@
     .importe-bar { background: ${navyColor}; color: white; padding: 8px 14px; margin-top: 10px; font-size: 9pt; line-height: 1.5; }
     .importe-bar .i-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-size: 8pt; opacity: 0.8; }
     .importe-bar .i-monto { font-size: 10pt; font-weight: 700; margin-top: 2px; }
+
+    /* ── CONDICIONES DE PAGO ── */
+    .pagos-bar { background: #2d4a22; color: white; text-align: center; font-weight: 700;
+      font-size: 9.5pt; letter-spacing: 0.8px; text-transform: uppercase; padding: 6px 10px; margin-top: 14px; }
+    .pagos-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 0; }
+    .pagos-table th { background: #f0f0f0; padding: 5px 10px; text-align: left; border: 1px solid #ccc; font-weight: 700; font-size: 8.5pt; text-transform: uppercase; }
+    .pagos-table th:nth-child(3), .pagos-table th:nth-child(4) { text-align: right; }
+    .pagos-table td { padding: 5px 10px; border: 1px solid #ccc; }
+    td.p-num { width: 28px; text-align: center; color: #666; background: #f7f7f7; }
+    td.p-concepto { }
+    td.p-pct { width: 50px; text-align: right; color: #444; }
+    td.p-monto { width: 130px; text-align: right; font-weight: 600; }
 
     /* ── FOOTER ── */
     .doc-footer { margin-top: 22px; border-top: 1.5px solid #bbb; padding-top: 10px; font-size: 8.5pt; color: #444; line-height: 1.6; text-align: center; }
@@ -675,6 +705,9 @@
     <div class="i-label">Importe con Letra:</div>
     <div class="i-monto">${numeroALetras(totalFinal)}</div>
   </div>
+
+  <!-- CONDICIONES DE PAGO -->
+  ${pagosSection}
 
   <!-- FOOTER -->
   <div class="doc-footer">

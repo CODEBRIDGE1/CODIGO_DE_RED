@@ -2,7 +2,7 @@
 Schemas para Cotizaciones
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime, date
 from decimal import Decimal
 
@@ -72,6 +72,7 @@ class QuoteResponse(QuoteBase):
     total_con_iva: Optional[Decimal] = Decimal("0")
     fecha_vigencia: Optional[date] = None
     comentarios_admin: Optional[str] = None
+    pagos: Optional[List[Any]] = None
     tipo_centro_carga: Optional[str] = None
     razon_social: Optional[str] = None
     created_at: datetime

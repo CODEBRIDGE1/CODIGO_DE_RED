@@ -1,5 +1,5 @@
 """Quote Models - Simplified"""
-from sqlalchemy import Column, Integer, String, Text, Numeric, DateTime, Date, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Numeric, DateTime, Date, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.db.base import Base
@@ -22,6 +22,7 @@ class Quote(Base):
     numero_transformadores = Column(Integer)
     observaciones = Column(Text)
     comentarios_admin = Column(Text, nullable=True)
+    pagos = Column(JSON, nullable=True)  # [{"concepto": str, "porcentaje": float}]
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
