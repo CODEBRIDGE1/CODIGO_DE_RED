@@ -73,7 +73,12 @@ app.add_middleware(AuditMiddleware)
 if settings.is_production:
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["*.codigo-red.com", "codigo-red.com", "31.97.210.250", "31.97.210.250:8001", "localhost", "127.0.0.1"]
+        allowed_hosts=[
+            "idepro.app", "www.idepro.app",
+            "*.codigo-red.com", "codigo-red.com",
+            "31.97.210.250", "31.97.210.250:8001",
+            "localhost", "127.0.0.1"
+        ]
     )
 
 # CORS (debe ejecutarse primero, por eso se agrega último)

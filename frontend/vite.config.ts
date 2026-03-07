@@ -15,16 +15,17 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 5173,
       strictPort: true,
+      allowedHosts: ['idepro.app', 'www.idepro.app'],
       hmr: {
         overlay: false,
-        clientPort: 5173
+        clientPort: 443,     // HMR WebSocket a través de nginx (puerto público HTTPS)
+        protocol: 'wss'      // WebSocket seguro (nginx hace TLS termination)
       },
       proxy: {
         '/api': {
           target: apiTarget,
           changeOrigin: true,
-          autoRewrite: true,
-          protocolRewrite: 'http'
+          autoRewrite: true
         },
         '/uploads': {
           target: apiTarget,
