@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     MINIO_ACCESS_KEY: str
     MINIO_SECRET_KEY: str
     MINIO_BUCKET_NAME: str = "evidences"
-    MINIO_SECURE: bool = False  # True para HTTPS
+    MINIO_USE_SSL: bool = False  # True para HTTPS en producción (debe coincidir con var de entorno)
     MINIO_EXTERNAL_ENDPOINT: str  # Para presigned URLs accesibles desde navegador
     
     # Security / JWT

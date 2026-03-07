@@ -27,14 +27,14 @@ class MinIOClient:
             settings.MINIO_ENDPOINT,
             access_key=settings.MINIO_ACCESS_KEY,
             secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_SECURE
+            secure=False  # MinIO interno siempre HTTP dentro de Docker
         )
         # Cliente para URLs externas (accesibles desde el navegador)
         self.external_client = Minio(
             settings.MINIO_EXTERNAL_ENDPOINT,
             access_key=settings.MINIO_ACCESS_KEY,
             secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_SECURE
+            secure=settings.MINIO_USE_SSL  # Usa HTTPS si MINIO_USE_SSL=true en .env
         )
         # Pre-poblar el cache de regiones para evitar llamadas de red al endpoint
         # externo (que no es accesible desde dentro de Docker). Sin esto, cada
@@ -73,7 +73,7 @@ class MinIOClient:
         data_stream = io.BytesIO(data)
         self.client.put_object("avatars", object_name, data_stream, length=len(data), content_type=content_type)
         # URL directa pública: http(s)://<external_endpoint>/avatars/<object>
-        scheme = "https" if settings.MINIO_SECURE else "http"
+        scheme = "https" if settings.MINIO_USE_SSL else "http"
         return f"{scheme}://{settings.MINIO_EXTERNAL_ENDPOINT}/avatars/{object_name}"
 
     

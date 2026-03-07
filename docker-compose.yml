@@ -199,17 +199,18 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      # - "443:443"  # Descomentar para HTTPS
+      - "443:443"
     volumes:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      # - ./infra/nginx/ssl:/etc/nginx/ssl:ro  # Para certificados SSL
+      - /etc/letsencrypt:/etc/letsencrypt:ro          # Certificados Let's Encrypt (read-only)
+      - /var/www/certbot:/var/www/certbot:ro           # ACME challenge para renovación
     depends_on:
       - api
       - frontend
     networks:
       - codigo_red_network
     profiles:
-      - production  # Solo levantar nginx con: docker-compose --profile production up
+      - production  # Solo levantar nginx con: docker compose --profile production up
 
 # ==========================================
 # Volumes (Persistencia)
