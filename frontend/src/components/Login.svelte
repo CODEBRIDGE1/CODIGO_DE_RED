@@ -136,7 +136,7 @@
 
 <div class="min-h-screen flex">
   <!-- Left Panel - Dark with Background Image -->
-  <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 relative overflow-hidden">
+  <div class="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-gray-900 via-gray-800 to-zinc-900 relative overflow-hidden">
     <!-- Background Image Overlay -->
     <div class="absolute inset-0 opacity-20">
       <img 
@@ -171,25 +171,25 @@
           Control de Calidad<br />
           Energética Industrial
         </h1>
-        <p class="text-lg text-blue-100 max-w-md leading-relaxed">
+        <p class="text-lg text-gray-300 max-w-md leading-relaxed">
           Monitoree y optimice la eficiencia energética de su empresa. 
           Gestione el consumo eléctrico y asegure la calidad de la red en tiempo real.
         </p>
         <div class="flex items-center space-x-4 text-sm">
           <div class="flex items-center space-x-2">
-            <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+            <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
             </svg>
             <span>Monitoreo en tiempo real</span>
           </div>
           <div class="flex items-center space-x-2">
-            <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+            <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
             </svg>
             <span>Optimización energética</span>
           </div>
           <div class="flex items-center space-x-2">
-            <svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+            <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
             </svg>
             <span>Calidad de red eléctrica</span>
@@ -198,9 +198,9 @@
       </div>
       
       <!-- Footer -->
-      <div class="text-sm text-blue-200">
+      <div class="text-sm text-gray-400">
         IDEPRO APP<br />
-        <span class="text-xs text-blue-300">v1.0.0 • 2026</span>
+        <span class="text-xs text-gray-500">v1.0.0 • 2026</span>
       </div>
     </div>
   </div>
@@ -344,7 +344,7 @@
           disabled={loading || !formValid}
           class="w-full text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center
             {formValid && !loading
-              ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
+              ? 'bg-yellow-500 hover:bg-yellow-600 text-gray-900 cursor-pointer'
               : 'bg-gray-300 text-gray-400 cursor-not-allowed'}"
         >
           {#if loading}
