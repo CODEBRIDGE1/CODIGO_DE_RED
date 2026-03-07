@@ -10,10 +10,12 @@ from decimal import Decimal
 
 from app.api.dependencies import get_current_user, get_db
 from app.models.user import User
+from app.models.tenant import Tenant
 from app.models.quote import Quote, QuoteLine
 from app.models.company import Company
 from app.models.compliance import CompanyClassification
 from app.models.quote_item import QuoteItem
+from app.models.superadmin_organization import SuperadminOrganization
 from app.schemas.quote import (
     QuoteCreate,
     QuoteUpdate,
@@ -22,8 +24,50 @@ from app.schemas.quote import (
     QuoteLineResponse
 )
 from app.schemas.quote_item import QuoteItemResponse, QuoteItemListResponse
+from app.schemas.superadmin_organization import SuperadminOrganizationResponse
 
 router = APIRouter()
+
+
+@router.get("/branding", response_model=Optional[SuperadminOrganizationResponse])
+async def get_quote_branding(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Retorna la información de branding/organización del superadmin que gestiona
+    el tenant del usuario actual. Usado para personalizar las cotizaciones PDF.
+
+    - Superadmins: usan su propia organización directamente.
+    - Usuarios tenant: se busca el superadmin_id del tenant y su organización.
+    """
+    # Superadmin: retornar su propia organización
+    if current_user.is_superadmin:
+        result = await db.execute(
+            select(SuperadminOrganization).where(
+                SuperadminOrganization.user_id == current_user.id
+            )
+        )
+        return result.scalar_one_or_none()
+
+    # Usuario tenant: buscar el tenant → superadmin_id → organización
+    if not current_user.tenant_id:
+        return None
+
+    result = await db.execute(
+        select(Tenant).where(Tenant.id == current_user.tenant_id)
+    )
+    tenant = result.scalar_one_or_none()
+
+    if not tenant or not tenant.superadmin_id:
+        return None
+
+    result = await db.execute(
+        select(SuperadminOrganization).where(
+            SuperadminOrganization.user_id == tenant.superadmin_id
+        )
+    )
+    return result.scalar_one_or_none()
 
 
 def generate_quote_number(tenant_id: int, count: int) -> str:

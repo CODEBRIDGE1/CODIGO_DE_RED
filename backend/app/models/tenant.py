@@ -1,7 +1,7 @@
 """
 Tenant Model - Cliente de la plataforma SaaS
 """
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum, Text
+from sqlalchemy import Column, Integer, String, DateTime, Enum as SQLEnum, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -34,6 +34,9 @@ class Tenant(Base):
         index=True
     )
     
+    # Superadmin que gestiona este tenant
+    superadmin_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    
     # Información de contacto
     contact_name = Column(String(200), nullable=True)
     contact_email = Column(String(255), nullable=True)
@@ -46,8 +49,9 @@ class Tenant(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     # Relationships
+    superadmin = relationship("User", foreign_keys=[superadmin_id])
     license = relationship("License", back_populates="tenant", uselist=False, cascade="all, delete-orphan")
-    users = relationship("User", back_populates="tenant", cascade="all, delete-orphan")
+    users = relationship("User", back_populates="tenant", cascade="all, delete-orphan", foreign_keys="User.tenant_id")
     companies = relationship("Company", back_populates="tenant", cascade="all, delete-orphan")
     projects = relationship("Project", back_populates="tenant", cascade="all, delete-orphan")
     evidences = relationship("Evidence", back_populates="tenant", cascade="all, delete-orphan")

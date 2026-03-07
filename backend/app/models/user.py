@@ -20,7 +20,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    tenant = relationship("Tenant", back_populates="users")
+    tenant = relationship("Tenant", back_populates="users", foreign_keys="User.tenant_id")
     security_level = relationship("SecurityLevel", back_populates="users")
     roles = relationship("Role", secondary="user_roles", back_populates="users")
     audit_logs = relationship("AuditLog", back_populates="user")

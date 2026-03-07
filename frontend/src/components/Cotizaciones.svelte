@@ -119,13 +119,9 @@
   });
 
   async function loadOrganizationInfo() {
-    // Solo cargar si es superadmin
-    const user = $authStore.user;
-    if (!user?.isSuperadmin) return;
-    
     try {
       const response = await authStore.fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/api/v1/admin/organization/me`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/v1/quotes/branding`,
         { headers: { Authorization: `Bearer ${$authStore.accessToken}` } }
       );
       
