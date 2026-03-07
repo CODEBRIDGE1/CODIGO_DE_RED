@@ -168,7 +168,7 @@
           </svg>
         </div>
         <div>
-          <div class="text-xl font-bold">CÓDIGO DE RED</div>
+          <div class="text-xl font-bold">IDEPRO APP</div>
           <div class="text-xs text-blue-300 uppercase tracking-wider">Gestión Energética</div>
         </div>
       </div>
@@ -207,7 +207,7 @@
       
       <!-- Footer -->
       <div class="text-sm text-blue-200">
-        CÓDIGO DE RED ENERGY MANAGEMENT<br />
+        IDEPRO APP<br />
         <span class="text-xs text-blue-300">v1.0.0 • 2026</span>
       </div>
     </div>
@@ -225,7 +225,7 @@
             </svg>
           </div>
           <div class="text-left">
-            <div class="text-lg font-bold text-gray-900">CÓDIGO DE RED</div>
+            <div class="text-lg font-bold text-gray-900">IDEPRO APP</div>
             <div class="text-xs text-blue-600 uppercase tracking-wider">Gestión Energética</div>
           </div>
         </div>
@@ -379,7 +379,7 @@
 
       <!-- Footer -->
       <div class="mt-8 text-center text-xs text-gray-500">
-        © 2026 Código de Red. Acceso exclusivo autorizado.
+        © 2026 IDEPRO App. Acceso exclusivo autorizado.
       </div>
 
     </div>

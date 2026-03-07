@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
     Lifecycle events
     """
     # Startup
-    logger.info("🚀 Starting Código de Red API...")
+    logger.info("🚀 Starting IDEPRO App API...")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Database: {settings.DATABASE_URL.split('@')[-1]}")  # Hide credentials
     

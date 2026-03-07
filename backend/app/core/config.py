@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     
     # API
     API_V1_PREFIX: str = "/api/v1"
-    PROJECT_NAME: str = "Código de Red Platform"
+    PROJECT_NAME: str = "IDEPRO App"
     VERSION: str = "1.0.0"
     DESCRIPTION: str = "Multi-tenant SaaS para gestión de cumplimiento normativo"
     

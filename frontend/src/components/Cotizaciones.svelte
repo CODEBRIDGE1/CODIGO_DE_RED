@@ -555,7 +555,7 @@
     <div class="logo-area">
       ${org?.logo_url ? `<img src="${org.logo_url}" alt="Logo" />` : ''}
       <div class="company-info">
-        <h1>${org?.nombre_comercial || org?.razon_social || 'CÓDIGO DE RED'}</h1>
+        <h1>${org?.nombre_comercial || org?.razon_social || 'IDEPRO APP'}</h1>
         <p>${org?.razon_social && org?.nombre_comercial !== org?.razon_social ? org.razon_social + '<br/>' : ''}${org ? `RFC: ${org.rfc}` : 'Soluciones en Energía Eléctrica'}</p>
       </div>
     </div>

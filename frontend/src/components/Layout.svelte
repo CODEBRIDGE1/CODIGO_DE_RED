@@ -284,7 +284,7 @@
               </svg>
             </div>
             <div class="hidden md:block">
-              <div class="text-sm font-bold text-gray-900">CÓDIGO DE RED</div>
+              <div class="text-sm font-bold text-gray-900">IDEPRO APP</div>
               <div class="text-xs text-gray-500">Gestión Energética</div>
             </div>
           </div>
