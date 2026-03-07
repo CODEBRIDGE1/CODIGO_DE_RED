@@ -162,7 +162,7 @@
     <div class="relative z-10 flex flex-col justify-between p-12 text-white">
       <!-- Logo -->
       <div class="flex items-center -ml-4">
-        <img src="/idepro-logo.png" alt="IDEPRO APP" class="h-24 w-auto brightness-0 invert" />
+        <img src="/idepro-logo.png" alt="IDEPRO APP" class="h-24 w-auto" />
       </div>
       
       <!-- Main Content -->
