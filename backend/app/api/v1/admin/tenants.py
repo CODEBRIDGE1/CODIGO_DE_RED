@@ -76,8 +76,8 @@ async def create_tenant(
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Subdomain already exists")
     
-    # Crear tenant
-    db_tenant = Tenant(**tenant_data.model_dump())
+    # Crear tenant — asignar el superadmin que lo está creando
+    db_tenant = Tenant(**tenant_data.model_dump(), superadmin_id=current_user.id)
     db.add(db_tenant)
     
     await db.commit()
