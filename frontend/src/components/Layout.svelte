@@ -277,16 +277,8 @@
             </svg>
           </button>
           
-          <div class="ml-4 flex items-center space-x-3">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <div class="hidden md:block">
-              <div class="text-sm font-bold text-gray-900">IDEPRO APP</div>
-              <div class="text-xs text-gray-500">Gestión Energética</div>
-            </div>
+          <div class="ml-4 flex items-center">
+            <img src="/idepro-logo.png" alt="IDEPRO APP" class="h-8 w-auto" />
           </div>
         </div>
 

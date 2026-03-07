@@ -161,16 +161,8 @@
     <!-- Content -->
     <div class="relative z-10 flex flex-col justify-between p-12 text-white">
       <!-- Logo -->
-      <div class="flex items-center space-x-3">
-        <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-          <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-        </div>
-        <div>
-          <div class="text-xl font-bold">IDEPRO APP</div>
-          <div class="text-xs text-blue-300 uppercase tracking-wider">Gestión Energética</div>
-        </div>
+      <div class="flex items-center">
+        <img src="/idepro-logo.png" alt="IDEPRO APP" class="h-14 w-auto brightness-0 invert" />
       </div>
       
       <!-- Main Content -->
@@ -218,17 +210,7 @@
     <div class="w-full max-w-md">
       <!-- Mobile Logo -->
       <div class="lg:hidden mb-8 text-center">
-        <div class="inline-flex items-center space-x-3">
-          <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <div class="text-left">
-            <div class="text-lg font-bold text-gray-900">IDEPRO APP</div>
-            <div class="text-xs text-blue-600 uppercase tracking-wider">Gestión Energética</div>
-          </div>
-        </div>
+        <img src="/idepro-logo.png" alt="IDEPRO APP" class="h-10 w-auto mx-auto" />
       </div>
 
       <!-- Welcome Text -->
