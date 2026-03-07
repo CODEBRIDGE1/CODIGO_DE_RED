@@ -474,39 +474,67 @@
       ? new Date(q.fecha_vigencia + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })
       : 'No especificada';
     const fechaEmision = new Date(q.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
-    const badgeBgMap: Record<string, string> = { sent: '#dbeafe', approved: '#dcfce7', rejected: '#fee2e2', draft: '#f3f4f6', accepted: '#d1fae5' };
-    const badgeColorMap: Record<string, string> = { sent: '#1d4ed8', approved: '#15803d', rejected: '#b91c1c', draft: '#374151', accepted: '#065f46' };
-    const badgeBg = badgeBgMap[q.status] || '#f3f4f6';
-    const badgeColor = badgeColorMap[q.status] || '#374151';
-    const statusLabel: Record<string, string> = { draft: 'Borrador', sent: 'En revisión', approved: 'Aprobada', rejected: 'Rechazada', accepted: 'Aceptada' };
     const styleTag = 'style';
-    
-    // Usar colores de la organización si están configurados
-    const primaryColor = org?.color_primario || '#1d4ed8';
-    const secondaryColor = org?.color_secundario || '#3b82f6';
-    
+    const navyColor = '#1a2744';
+
     function fmtMXN(v: number) {
       return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(v);
     }
-    const linesRows = q.lines.map((l, i) => `
-      <tr>
-        <td>${i + 1}</td>
-        <td>${l.description}</td>
-        <td style="text-align:right">${Number(l.quantity)}</td>
-        <td style="text-align:right">${l.unit_price > 0 ? fmtMXN(l.unit_price) : '<em style="color:#999">Por definir</em>'}</td>
-        <td style="text-align:right">${l.unit_price > 0 ? fmtMXN(Number(l.unit_price) * Number(l.quantity)) : '—'}</td>
-      </tr>`).join('');
 
-    // Construir dirección completa de la organización
-    let direccionOrg = '';
-    if (org) {
-      direccionOrg = `${org.calle} ${org.numero_exterior}${org.numero_interior ? ' Int. ' + org.numero_interior : ''}, ${org.colonia}<br/>`;
-      direccionOrg += `${org.ciudad}, ${org.estado}, C.P. ${org.codigo_postal}<br/>`;
-      direccionOrg += `Tel: ${org.telefono} | Email: ${org.email}`;
-      if (org.sitio_web) {
-        direccionOrg += `<br/>${org.sitio_web}`;
+    function numeroALetras(monto: number): string {
+      const UNIDADES = ['','UNO','DOS','TRES','CUATRO','CINCO','SEIS','SIETE','OCHO','NUEVE',
+        'DIEZ','ONCE','DOCE','TRECE','CATORCE','QUINCE','DIECISÉIS','DIECISIETE','DIECIOCHO','DIECINUEVE'];
+      const DECENAS = ['','DIEZ','VEINTE','TREINTA','CUARENTA','CINCUENTA','SESENTA','SETENTA','OCHENTA','NOVENTA'];
+      const CENTENAS = ['','CIENTO','DOSCIENTOS','TRESCIENTOS','CUATROCIENTOS','QUINIENTOS',
+        'SEISCIENTOS','SETECIENTOS','OCHOCIENTOS','NOVECIENTOS'];
+      function grupo(n: number): string {
+        const c = Math.floor(n / 100);
+        const d = Math.floor((n % 100) / 10);
+        const u = n % 10;
+        let res = '';
+        if (c === 1 && d === 0 && u === 0) return 'CIEN';
+        if (c > 0) res += CENTENAS[c] + ' ';
+        if (d === 1) { res += UNIDADES[10 + u]; return res.trim(); }
+        if (d === 2 && u > 0) { res += 'VEINTI' + UNIDADES[u]; return res.trim(); }
+        if (d > 0) res += DECENAS[d] + (u > 0 ? ' Y ' : '');
+        if (u > 0) res += UNIDADES[u];
+        return res.trim();
       }
+      const entero = Math.floor(monto);
+      const centavos = Math.round((monto - entero) * 100);
+      const millones = Math.floor(entero / 1000000);
+      const miles = Math.floor((entero % 1000000) / 1000);
+      const cientos = entero % 1000;
+      let letras = '';
+      if (millones > 0) letras += (millones === 1 ? 'UN MILLÓN ' : grupo(millones) + ' MILLONES ');
+      if (miles > 0) letras += (miles === 1 ? 'MIL ' : grupo(miles) + ' MIL ');
+      if (cientos > 0) letras += grupo(cientos);
+      if (!letras.trim()) letras = 'CERO';
+      return letras.trim() + ' ' + String(centavos).padStart(2,'0') + '/100 M.N.';
     }
+
+    // Construir datos de la organización emisora
+    let orgDireccion = '';
+    if (org) {
+      const partes = [
+        org.calle && org.numero_exterior ? `${org.calle} ${org.numero_exterior}${org.numero_interior ? ' Int. ' + org.numero_interior : ''}` : '',
+        org.colonia || '',
+        org.ciudad && org.estado ? `${org.ciudad}, ${org.estado}` : (org.ciudad || org.estado || ''),
+        org.codigo_postal ? `C.P. ${org.codigo_postal}` : ''
+      ].filter(Boolean);
+      orgDireccion = partes.join(', ');
+    }
+
+    // Numeración estilo X.1, X.2... usando número de cotización como prefijo
+    const quotePrefix = q.quote_number ? q.quote_number.replace(/\D/g, '').slice(-1) || '1' : '1';
+    const linesRows = q.lines.map((l, i) => {
+      const monto = l.unit_price > 0 ? fmtMXN(Number(l.unit_price) * Number(l.quantity)) : '—';
+      return `<tr>
+        <td class="item-num">${quotePrefix}.${i + 1}</td>
+        <td class="item-desc">${l.description}</td>
+        <td class="item-price">${l.unit_price > 0 ? monto : '<em style="color:#aaa;font-size:9pt">Por definir</em>'}</td>
+      </tr>`;
+    }).join('');
 
     const html = `<!DOCTYPE html>
 <html lang="es">
@@ -515,95 +543,145 @@
   <title>Cotización ${q.quote_number}</title>
   <${styleTag}>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; font-size: 11pt; color: #1a1a1a; padding: 20mm 18mm; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; border-bottom: 3px solid ${primaryColor}; padding-bottom: 16px; }
-    .logo-area { display: flex; align-items: center; gap: 12px; }
-    .logo-area img { max-height: 60px; max-width: 150px; object-fit: contain; }
-    .logo-area .company-info h1 { font-size: 20pt; font-weight: 800; color: ${primaryColor}; letter-spacing: -0.5px; }
-    .logo-area .company-info p { font-size: 9pt; color: #6b7280; margin-top: 2px; line-height: 1.4; }
-    .doc-info { text-align: right; }
-    .doc-info .quote-num { font-size: 16pt; font-weight: 700; color: ${primaryColor}; }
-    .doc-info .meta { font-size: 9pt; color: #6b7280; line-height: 1.6; margin-top: 4px; }
-    .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background: ${badgeBg}; color: ${badgeColor}; }
-    .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px; margin-bottom: 20px; }
-    .card h3 { font-size: 8pt; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.8px; margin-bottom: 8px; }
-    .card p { font-size: 10pt; line-height: 1.6; color: #1e293b; }
-    .card .name { font-size: 12pt; font-weight: 700; color: #0f172a; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 10pt; }
-    thead tr { background: ${primaryColor}; color: white; }
-    thead th { padding: 8px 10px; text-align: left; font-weight: 600; font-size: 9pt; }
-    thead th:nth-child(3), thead th:nth-child(4), thead th:nth-child(5) { text-align: right; }
-    tbody tr:nth-child(even) { background: #f8fafc; }
-    tbody td { padding: 7px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-    tbody td:nth-child(1) { width: 30px; color: #94a3b8; font-size: 9pt; }
-    tbody td:nth-child(3), tbody td:nth-child(4), tbody td:nth-child(5) { text-align: right; white-space: nowrap; }
-    .totals { margin-left: auto; width: 280px; }
-    .totals table { margin-bottom: 0; }
-    .totals td { padding: 5px 10px; border-bottom: none; }
-    .total-row { background: ${primaryColor}; color: white; font-weight: 700; font-size: 11pt; }
-    .total-row td { padding: 8px 10px; border-radius: 4px; }
-    .comments { margin-top: 20px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 12px 14px; }
-    .comments h3 { font-size: 9pt; font-weight: 700; color: #92400e; margin-bottom: 6px; text-transform: uppercase; }
-    .comments p { font-size: 10pt; color: #78350f; white-space: pre-line; line-height: 1.5; }
-    .footer { margin-top: 30px; text-align: center; font-size: 8pt; color: #94a3b8; border-top: 1px solid #e5e7eb; padding-top: 10px; }
-    .org-footer { margin-top: 15px; background: #f8fafc; padding: 12px; border-radius: 4px; font-size: 8pt; color: #64748b; text-align: center; line-height: 1.5; }
-    @media print { body { padding: 15mm 12mm; } }
+    body { font-family: Arial, sans-serif; font-size: 10pt; color: #1a1a1a; padding: 16mm 18mm; }
+
+    /* ── ENCABEZADO ── */
+    .doc-header { display: table; width: 100%; border: 1.5px solid #bbb; margin-bottom: 14px; }
+    .header-left { display: table-cell; width: 60%; vertical-align: top; padding: 12px 14px; border-right: 1.5px solid #bbb; }
+    .header-right { display: table-cell; width: 40%; vertical-align: middle; text-align: center; padding: 12px 14px; }
+    .org-name { font-size: 13pt; font-weight: 900; text-transform: uppercase; color: #1a1a1a; margin-bottom: 4px; }
+    .org-detail { font-size: 8.5pt; color: #333; line-height: 1.7; }
+    .org-detail strong { color: #1a1a1a; }
+    .header-right img { max-height: 75px; max-width: 170px; object-fit: contain; }
+    .header-right .tagline { font-size: 7.5pt; color: #555; margin-top: 6px; font-style: italic; }
+
+    /* ── META TABLE ── */
+    .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 9.5pt; }
+    .meta-table td { padding: 5px 10px; border: 1px solid #ccc; }
+    .meta-table .meta-label { background: #f0f0f0; font-weight: 700; width: 36%; color: #333; text-transform: uppercase; font-size: 8.5pt; }
+    .meta-table .meta-val { color: #1a1a1a; }
+    .meta-table .num-cotizacion { font-size: 11pt; font-weight: 900; color: ${navyColor}; }
+
+    /* ── BARRA TITULO SERVICIO ── */
+    .section-bar { background: ${navyColor}; color: white; text-align: center; font-weight: 700;
+      font-size: 10pt; letter-spacing: 1px; text-transform: uppercase; padding: 7px 10px; margin-bottom: 0; }
+    .project-title { text-align: center; font-weight: 700; font-size: 10pt; text-transform: uppercase;
+      padding: 7px 10px; border: 1px solid #ccc; border-top: none; margin-bottom: 0; background: #fafafa; }
+
+    /* ── TABLA DE PARTIDAS ── */
+    .items-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+    .items-table td { padding: 6px 10px; border: 1px solid #ccc; vertical-align: top; }
+    td.item-num { width: 42px; text-align: center; font-weight: 700; color: #333; background: #f7f7f7; border-right: 1px solid #ccc; white-space: nowrap; }
+    td.item-desc { line-height: 1.55; color: #1a1a1a; }
+    td.item-price { width: 130px; text-align: right; white-space: nowrap; font-weight: 600; color: #1a1a1a; }
+
+    /* ── NOTAS ── */
+    .notes-section { border: 1px solid #ccc; border-top: none; padding: 10px 12px; font-size: 9pt; line-height: 1.6; color: #333; white-space: pre-line; }
+    .notes-section .notes-label { font-weight: 700; color: #1a1a1a; display: block; margin-bottom: 4px; }
+
+    /* ── TOTALES ── */
+    .totals-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
+    .totals-table { border-collapse: collapse; font-size: 9.5pt; min-width: 260px; }
+    .totals-table td { padding: 5px 12px; border: 1px solid #ccc; }
+    .totals-table .t-label { background: #f0f0f0; font-weight: 700; text-transform: uppercase; color: #333; }
+    .totals-table .t-val { text-align: right; font-weight: 600; }
+    .totals-table .total-final td { background: ${navyColor}; color: white; font-weight: 900; font-size: 11pt; }
+
+    /* ── IMPORTE CON LETRA ── */
+    .importe-bar { background: ${navyColor}; color: white; padding: 8px 14px; margin-top: 10px; font-size: 9pt; line-height: 1.5; }
+    .importe-bar .i-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-size: 8pt; opacity: 0.8; }
+    .importe-bar .i-monto { font-size: 10pt; font-weight: 700; margin-top: 2px; }
+
+    /* ── FOOTER ── */
+    .doc-footer { margin-top: 22px; border-top: 1.5px solid #bbb; padding-top: 10px; font-size: 8.5pt; color: #444; line-height: 1.6; text-align: center; }
+    .doc-footer strong { color: #1a1a1a; }
+
+    @media print { body { padding: 12mm 14mm; } }
   </${styleTag}>
 </head>
 <body>
-  <div class="header">
-    <div class="logo-area">
-      ${org?.logo_url ? `<img src="${org.logo_url}" alt="Logo" />` : ''}
-      <div class="company-info">
-        <h1>${org?.nombre_comercial || org?.razon_social || 'IDEPRO APP'}</h1>
-        <p>${org?.razon_social && org?.nombre_comercial !== org?.razon_social ? org.razon_social + '<br/>' : ''}${org ? `RFC: ${org.rfc}` : 'Soluciones en Energía Eléctrica'}</p>
+
+  <!-- ENCABEZADO -->
+  <div class="doc-header">
+    <div class="header-left">
+      <div class="org-name">${org?.razon_social || org?.nombre_comercial || 'IDEPRO APP'}</div>
+      <div class="org-detail">
+        ${org?.calle ? `${org.calle} ${org.numero_exterior || ''}${org.numero_interior ? ' Int. ' + org.numero_interior : ''}` : ''}
+        ${org?.colonia ? `, ${org.colonia}` : ''}<br/>
+        ${orgDireccion ? `${org?.ciudad || ''}, ${org?.estado || ''}, C.P. ${org?.codigo_postal || ''}<br/>` : ''}
+        ${org?.rfc ? `<strong>RFC:</strong> ${org.rfc}<br/>` : ''}
+        ${org?.telefono ? `Tel: ${org.telefono}` : ''}${org?.email ? ` | ${org.email}` : ''}
+        ${org?.sitio_web ? `<br/>${org.sitio_web}` : ''}
       </div>
     </div>
-    <div class="doc-info">
-      <div class="quote-num">${q.quote_number}</div>
-      <div class="meta">
-        Emisión: ${fechaEmision}<br/>
-        Vigencia: ${vigencia}<br/>
-        <span class="status-badge">${statusLabel[q.status] || q.status}</span>
-      </div>
+    <div class="header-right">
+      ${org?.logo_url ? `<img src="${org.logo_url}" alt="${org.nombre_comercial || 'Logo'}" />` : `<div style="font-size:18pt;font-weight:900;color:${navyColor}">${org?.nombre_comercial || 'IDEPRO'}</div>`}
+      ${org?.nombre_comercial && org.nombre_comercial !== org?.razon_social ? `<div class="tagline">${org.nombre_comercial}</div>` : ''}
     </div>
   </div>
-  <div class="card">
-    <h3>Empresa</h3>
-    <p class="name">${q.razon_social}</p>
-    <p>${q.title}</p>
-    ${q.numero_transformadores ? `<p>Transformadores: ${q.numero_transformadores}</p>` : ''}
-    ${q.observaciones ? `<p style="margin-top:6px;font-size:9pt;color:#64748b">${q.observaciones}</p>` : ''}
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th>#</th><th>Descripción</th>
-        <th style="text-align:right">Cant.</th>
-        <th style="text-align:right">P. Unitario</th>
-        <th style="text-align:right">Subtotal</th>
-      </tr>
-    </thead>
-    <tbody>${linesRows}</tbody>
+
+  <!-- TABLA META -->
+  <table class="meta-table">
+    <tr>
+      <td class="meta-label">Fecha</td>
+      <td class="meta-val">${fechaEmision}</td>
+      <td class="meta-label">N° Cotización</td>
+      <td class="meta-val"><span class="num-cotizacion">${q.quote_number}</span></td>
+    </tr>
+    <tr>
+      <td class="meta-label">Presupuesto Válido</td>
+      <td class="meta-val">${vigencia}</td>
+      <td class="meta-label">Cliente</td>
+      <td class="meta-val"><strong>${q.razon_social || '—'}</strong></td>
+    </tr>
+    ${q.observaciones ? `<tr>
+      <td class="meta-label">Referencia</td>
+      <td class="meta-val" colspan="3">${q.observaciones}</td>
+    </tr>` : ''}
   </table>
-  <div class="totals">
-    <table>
-      <tr><td>Subtotal</td><td style="text-align:right;font-weight:600">${fmtMXN(subtotal)}</td></tr>
-      ${q.iva_percent > 0 ? `<tr><td>IVA (${q.iva_percent}%)</td><td style="text-align:right">${fmtMXN(ivaAmt)}</td></tr>` : ''}
-      <tr class="total-row"><td>TOTAL</td><td style="text-align:right">${fmtMXN(totalFinal)}</td></tr>
+
+  <!-- BARRA DESCRIPCIÓN DEL SERVICIO -->
+  <div class="section-bar">Descripción del Servicio</div>
+  <div class="project-title">${q.title}${q.numero_transformadores ? ` — ${q.numero_transformadores} Transformador(es)` : ''}</div>
+
+  <!-- PARTIDAS -->
+  <table class="items-table">
+    ${linesRows}
+  </table>
+
+  <!-- NOTAS Y CONDICIONES -->
+  ${q.comentarios_admin ? `<div class="notes-section"><span class="notes-label">Nota:</span>${q.comentarios_admin}</div>` : ''}
+
+  <!-- TOTALES -->
+  <div class="totals-wrap">
+    <table class="totals-table">
+      <tr>
+        <td class="t-label">Sub-Total</td>
+        <td class="t-val">${fmtMXN(subtotal)}</td>
+      </tr>
+      <tr>
+        <td class="t-label">${q.iva_percent > 0 ? `I.V.A. (${q.iva_percent}%)` : 'I.V.A.'}</td>
+        <td class="t-val">${fmtMXN(ivaAmt)}</td>
+      </tr>
+      <tr class="total-final">
+        <td class="t-label">Total</td>
+        <td class="t-val">${fmtMXN(totalFinal)}</td>
+      </tr>
     </table>
   </div>
-  ${q.comentarios_admin ? `
-  <div class="comments">
-    <h3>Notas y Condiciones</h3>
-    <p>${q.comentarios_admin}</p>
-  </div>` : ''}
-  ${org ? `
-  <div class="org-footer">
-    <strong>${org.nombre_comercial || org.razon_social}</strong><br/>
-    ${direccionOrg}
-  </div>` : ''}
-  <div class="footer">Cotización generada el ${new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' })}</div>
+
+  <!-- IMPORTE CON LETRA -->
+  <div class="importe-bar">
+    <div class="i-label">Importe con Letra:</div>
+    <div class="i-monto">${numeroALetras(totalFinal)}</div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="doc-footer">
+    Esperamos cubrir satisfactoriamente sus necesidades y quedamos a sus apreciables órdenes.<br/>
+    Cualquier duda o aclaración, favor de contactar al correo: <strong>${org?.email || ''}</strong>
+  </div>
+
 </body>
 </html>`;
     const win = window.open('', '_blank', 'width=900,height=700');
